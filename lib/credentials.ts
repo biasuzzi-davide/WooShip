@@ -1,117 +1,98 @@
-import path from "path";
-import fs from "fs/promises";
+import { cookies } from "next/headers";
 import type { WooCredentials, StorageMode } from "@/types";
 import { encrypt, decrypt } from "./crypto";
 
-const CREDENTIALS_DIR = path.join(process.cwd(), ".data");
-const CREDENTIALS_FILE = path.join(CREDENTIALS_DIR, "credentials.enc");
-
-// Cached storage mode (set on first call)
-let cachedStorageMode: StorageMode | null = null;
+const COOKIE_NAME = "wooship_credentials_v1";
 
 /**
- * Detects whether we can write to the filesystem.
- * Returns "filesystem" if .data/ is writable, "session_cookie" otherwise.
- * Caches the result after first call.
+ * Common configuration for our credential cookie
+ */
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  maxAge: 60 * 60 * 24 * 365, // 1 year duration
+});
+
+/**
+ * Returns the active storage mode. Since we enforce cookies, this now purely returns "cookie".
  */
 export async function detectStorageMode(): Promise<StorageMode> {
-  if (cachedStorageMode) return cachedStorageMode;
-
-  try {
-    await fs.mkdir(CREDENTIALS_DIR, { recursive: true });
-    const testFile = path.join(CREDENTIALS_DIR, ".write-test");
-    await fs.writeFile(testFile, "test");
-    await fs.unlink(testFile);
-    cachedStorageMode = "filesystem";
-    console.log("[WooShip] Storage mode: filesystem (Vercel Pro detected)");
-  } catch {
-    cachedStorageMode = "session_cookie";
-    console.warn(
-      "[WooShip] Storage mode: session_cookie (filesystem not available — Vercel Hobby or read-only environment)"
-    );
-  }
-
-  return cachedStorageMode;
+  return "cookie";
 }
 
 /**
- * Saves WooCommerce credentials to storage.
- * Currently only supports filesystem mode. Throws for session_cookie mode.
+ * Saves WooCommerce credentials to an encrypted HTTP-Only cookie.
+ * Requires Next.js server context.
  */
 export async function saveCredentials(
   creds: WooCredentials,
   mode: StorageMode
 ): Promise<void> {
-  if (mode !== "filesystem") {
-    throw new Error("Session cookie storage not yet implemented. Use filesystem mode or set WOOCOMMERCE_* env vars.");
+  if (mode !== "cookie") {
+    throw new Error("Only cookie storage is supported starting from v2.");
   }
+  
   const encrypted = encrypt(JSON.stringify(creds));
-  await fs.mkdir(CREDENTIALS_DIR, { recursive: true });
-  await fs.writeFile(CREDENTIALS_FILE, JSON.stringify(encrypted), "utf-8");
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, JSON.stringify(encrypted), getCookieOptions());
 }
 
 /**
- * Loads WooCommerce credentials from storage.
- * Returns null if no credentials exist. Throws CryptoKeyError on decryption failure.
+ * Loads WooCommerce credentials from the HTTP-Only cookie.
+ * Returns null if no cookie exists. Throws CryptoKeyError on decryption failure.
  */
 export async function loadCredentials(
   mode: StorageMode
 ): Promise<WooCredentials | null> {
-  if (mode !== "filesystem") {
-    throw new Error("Session cookie storage not yet implemented.");
+  if (mode !== "cookie") {
+    throw new Error("Only cookie storage is supported starting from v2.");
   }
+
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(COOKIE_NAME);
+  
+  if (!cookie || !cookie.value) {
+    return null;
+  }
+
   try {
-    const data = await fs.readFile(CREDENTIALS_FILE, "utf-8");
-    const { ciphertext, iv, tag } = JSON.parse(data);
+    const { ciphertext, iv, tag } = JSON.parse(cookie.value);
     const plaintext = decrypt(ciphertext, iv, tag);
     return JSON.parse(plaintext) as WooCredentials;
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
-    throw err;
+    console.error("[WooShip] Failed to parse/decrypt credentials from cookie", err);
+    // If decryption fails (e.g. key rotated), behave like it doesn't exist so user can reconnect
+    return null;
   }
 }
 
 /**
- * Clears stored credentials from filesystem.
+ * Clears stored credentials cookie.
  */
 export async function clearCredentials(mode: StorageMode): Promise<void> {
-  if (mode !== "filesystem") {
-    throw new Error("Session cookie storage not yet implemented.");
+  if (mode !== "cookie") {
+    throw new Error("Only cookie storage is supported starting from v2.");
   }
-  try {
-    await fs.unlink(CREDENTIALS_FILE);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw err;
-    }
-    // File didn't exist — already cleared
-  }
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
 }
 
 /**
- * Checks if credentials exist in filesystem storage.
+ * Checks if credentials exist in the cookie.
  */
 export async function hasCredentials(mode?: StorageMode): Promise<boolean> {
-  const storageMode = mode ?? (await detectStorageMode());
-  if (storageMode !== "filesystem") return false;
-  try {
-    await fs.access(CREDENTIALS_FILE);
-    return true;
-  } catch {
-    return false;
-  }
+  const cookieStore = await cookies();
+  return cookieStore.has(COOKIE_NAME);
 }
 
 /**
- * Gets the store URL from stored credentials, or null if none exist.
+ * Gets the store URL from the stored credentials cookie, or null if none exist.
  */
 export async function getStoredStoreUrl(
   mode?: StorageMode
 ): Promise<string | null> {
-  const storageMode = mode ?? (await detectStorageMode());
-  const creds = await loadCredentials(storageMode);
+  const creds = await loadCredentials("cookie");
   return creds?.storeUrl ?? null;
 }
 

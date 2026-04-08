@@ -23,30 +23,21 @@ export default function CredentialsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
-  const [isSessionCookieMode, setIsSessionCookieMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     // Load current credential status
-    Promise.all([
-      fetch("/api/credentials").then((r) => r.json()),
-      fetch("/api/storage-mode").then((r) => r.json()),
-    ]).then(([credsData, storageData]) => {
+    fetch("/api/credentials").then((r) => r.json()).then((credsData) => {
       if (credsData.hasCredentials) {
         setIsConnected(true);
         setStoredStoreUrl(credsData.storeUrl ?? null);
-      }
-      if (storageData.storageMode === "session_cookie") {
-        setIsSessionCookieMode(true);
       }
     }).catch(() => {
       // Ignore
     });
   }, []);
 
-  const isStorageUnavailable = isSessionCookieMode && !isConnected;
   const canSubmit =
-    !isStorageUnavailable &&
     storeUrl.trim() &&
     consumerKey.trim() &&
     consumerSecret.trim();
@@ -150,38 +141,6 @@ export default function CredentialsPage() {
           </p>
         </div>
 
-        {/* Non-persistent environment warning */}
-        {isSessionCookieMode && (
-          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <svg
-                className="w-5 h-5 text-amber-600 mt-0.5 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-amber-800">
-                  Filesystem storage unavailable
-                </p>
-                <p className="text-sm text-amber-700 mt-1">
-                  This environment does not support persistent filesystem writes.
-                  The fallback session_cookie storage is not implemented yet.
-                  Configure WOOCOMMERCE_STORE_URL, WOOCOMMERCE_CONSUMER_KEY and
-                  WOOCOMMERCE_CONSUMER_SECRET as environment variables.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Connected State */}
         {isConnected && !showDeleteConfirm && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
@@ -216,7 +175,7 @@ export default function CredentialsPage() {
           <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6 mb-6">
             <h3 className="font-medium text-gray-900 mb-2">Clear credentials?</h3>
             <p className="text-sm text-gray-500 mb-4">
-              This will remove your stored WooCommerce credentials.
+              This will remove your stored WooCommerce credentials from this browser.
             </p>
             <div className="flex gap-3">
               <button
@@ -241,14 +200,6 @@ export default function CredentialsPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             {isConnected ? "Update Credentials" : "Enter WooCommerce Credentials"}
           </h2>
-
-          {isStorageUnavailable && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                UI credential saving is disabled in this environment. Use WOOCOMMERCE_* environment variables.
-              </p>
-            </div>
-          )}
 
           <form onSubmit={handleSave} className="space-y-4">
             <div>
@@ -335,7 +286,7 @@ export default function CredentialsPage() {
               <button
                 type="button"
                 onClick={handleTestConnection}
-                disabled={isStorageUnavailable || (!storedStoreUrl && !storeUrl) || isTesting}
+                disabled={(!storedStoreUrl && !storeUrl) || isTesting}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isTesting ? "Testing..." : "Test"}
@@ -345,7 +296,7 @@ export default function CredentialsPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Credentials are encrypted and stored server-side. Never sent to the client.
+          Credentials are encrypted and stored in a secure HTTP-only cookie.
         </p>
       </div>
     </div>

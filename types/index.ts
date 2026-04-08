@@ -31,7 +31,7 @@ export interface WarningSummary {
 }
 
 // Storage Mode (two-tier strategy)
-export type StorageMode = "filesystem" | "session_cookie";
+export type StorageMode = "filesystem" | "cookie";
 
 // API Error
 export class WooApiError extends Error {

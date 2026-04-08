@@ -10,9 +10,6 @@ import {
 import { requireSameOrigin } from "@/lib/security";
 import type { WooCredentials } from "@/types";
 
-const SESSION_STORAGE_UNAVAILABLE_MESSAGE =
-  "This environment does not support filesystem credential storage and session_cookie storage is not implemented. Configure WOOCOMMERCE_STORE_URL, WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_CONSUMER_SECRET as environment variables.";
-
 export async function GET() {
   if (isCredentialsFromEnvironment()) {
     const storeUrl = process.env.WOOCOMMERCE_STORE_URL!;
@@ -21,14 +18,6 @@ export async function GET() {
 
   try {
     const mode = await detectStorageMode();
-    if (mode === "session_cookie") {
-      return NextResponse.json({
-        hasCredentials: false,
-        storageMode: mode,
-        warning: SESSION_STORAGE_UNAVAILABLE_MESSAGE,
-      });
-    }
-
     const exists = await loadCredentials(mode);
     if (exists) {
       const storeUrl = await getStoredStoreUrl(mode);
@@ -56,12 +45,6 @@ export async function POST(req: NextRequest) {
   }
 
   const mode = await detectStorageMode();
-  if (mode === "session_cookie") {
-    return NextResponse.json(
-      { error: SESSION_STORAGE_UNAVAILABLE_MESSAGE },
-      { status: 503 }
-    );
-  }
 
   try {
     const body = await req.json() as Partial<WooCredentials>;
@@ -95,12 +78,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   const mode = await detectStorageMode();
-  if (mode === "session_cookie") {
-    return NextResponse.json(
-      { error: SESSION_STORAGE_UNAVAILABLE_MESSAGE },
-      { status: 503 }
-    );
-  }
 
   try {
     await clearCredentials(mode);
