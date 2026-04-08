@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
     const csv = generateCSV(selectedOrders, options);
     const today = new Date().toISOString().split("T")[0];
-    const filename = `spedizione-${today}.csv`;
+    const filename = `wooship-${today}.csv`;
 
     return new NextResponse(csv, {
       headers: {

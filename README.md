@@ -1,10 +1,10 @@
-# Spedizione
+# WooShip
 
 Applicazione Next.js per estrarre ordini da WooCommerce e generare CSV pronti per software di spedizione.
 
 ## Perche e utile
 
-Spedizione riduce il flusso manuale classico:
+WooShip riduce il flusso manuale classico:
 
 - recupero ordini da WooCommerce
 - filtro per stato e intervallo date

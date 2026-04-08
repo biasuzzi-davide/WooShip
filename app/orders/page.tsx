@@ -57,9 +57,12 @@ export default function OrdersPage() {
       .then((data) => {
         if (!data.hasCredentials) {
           router.push("/credentials");
+        } else {
+          fetchOrders();
         }
       })
       .catch(() => router.push("/credentials"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   async function fetchOrders() {
@@ -197,7 +200,7 @@ export default function OrdersPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `spedizione-${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `wooship-${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

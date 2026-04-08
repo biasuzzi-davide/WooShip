@@ -23,11 +23,11 @@ export async function detectStorageMode(): Promise<StorageMode> {
     await fs.writeFile(testFile, "test");
     await fs.unlink(testFile);
     cachedStorageMode = "filesystem";
-    console.log("[Spedizione] Storage mode: filesystem (Vercel Pro detected)");
+    console.log("[WooShip] Storage mode: filesystem (Vercel Pro detected)");
   } catch {
     cachedStorageMode = "session_cookie";
     console.warn(
-      "[Spedizione] Storage mode: session_cookie (filesystem not available — Vercel Hobby or read-only environment)"
+      "[WooShip] Storage mode: session_cookie (filesystem not available — Vercel Hobby or read-only environment)"
     );
   }
 

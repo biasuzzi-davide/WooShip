@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from "react";
 
+const formatStoreUrl = (url: string) => {
+  let formatted = url.trim();
+  if (!formatted) return "";
+  if (!/^https?:\/\//i.test(formatted)) {
+    formatted = `https://${formatted}`;
+  }
+  return formatted.replace(/\/$/, "");
+};
+
 export default function CredentialsPage() {
   const [storeUrl, setStoreUrl] = useState("");
   const [consumerKey, setConsumerKey] = useState("");
@@ -50,10 +59,11 @@ export default function CredentialsPage() {
     setSuccess(null);
 
     try {
+      const formattedUrl = formatStoreUrl(storeUrl);
       const res = await fetch("/api/credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeUrl, consumerKey, consumerSecret }),
+        body: JSON.stringify({ storeUrl: formattedUrl, consumerKey, consumerSecret }),
       });
       const data = await res.json();
 
@@ -63,7 +73,7 @@ export default function CredentialsPage() {
       }
 
       setIsConnected(true);
-      setStoredStoreUrl(storeUrl);
+      setStoredStoreUrl(formattedUrl);
       setSuccess("Credentials saved successfully!");
       setStoreUrl("");
       setConsumerKey("");
@@ -134,7 +144,7 @@ export default function CredentialsPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Spedizione</h1>
+          <h1 className="text-3xl font-bold text-gray-900">WooShip</h1>
           <p className="text-gray-500 mt-1">
             WooCommerce → Shipping CSV
           </p>
@@ -246,9 +256,11 @@ export default function CredentialsPage() {
                 Store URL
               </label>
               <input
-                type="url"
+                type="text"
+                inputMode="url"
                 value={storeUrl}
                 onChange={(e) => setStoreUrl(e.target.value)}
+                onBlur={(e) => setStoreUrl(formatStoreUrl(e.target.value))}
                 placeholder="https://yourstore.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
