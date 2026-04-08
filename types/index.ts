@@ -1,5 +1,5 @@
-import type { WooOrder } from "./woocommerce";
-export type { WooOrder };
+import type { WooOrder, WooLineItem } from "./woocommerce";
+export type { WooOrder, WooLineItem };
 
 // Credentials
 export interface WooCredentials {

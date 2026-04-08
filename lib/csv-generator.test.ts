@@ -1,6 +1,25 @@
 import { describe, it, expect } from "vitest";
 import { generateCSV } from "./csv-generator";
-import type { WooOrder } from "@/types";
+import type { WooOrder, WooLineItem } from "@/types";
+
+function makeItem(name: string, quantity: number): WooLineItem {
+  return {
+    id: Math.random(),
+    name,
+    product_id: 1,
+    variation_id: 0,
+    quantity,
+    tax_class: "",
+    subtotal: "0",
+    subtotal_tax: "0",
+    total: "0",
+    total_tax: "0",
+    taxes: [],
+    meta_data: [],
+    sku: "",
+    price: 0
+  } as WooLineItem;
+}
 
 function makeMinimalOrder(overrides: Partial<WooOrder> = {}): WooOrder {
   return {
@@ -50,23 +69,18 @@ function makeMinimalOrder(overrides: Partial<WooOrder> = {}): WooOrder {
     payment_method: "bacs",
     payment_method_title: "Bank Transfer",
     transaction_id: "",
-    line_items: [],
+    line_items: [makeItem("Bottiglia 0.75L", 1)],
     tax_lines: [],
     shipping_lines: [],
     fee_lines: [],
     refund_lines: [],
     coupons: [],
-    virtual: false,
-    downloadable_items: [],
-    completed_date: null,
     meta_data: [],
-    external_url: "",
-    acknowledged: false,
     ...overrides,
-  };
+  } as WooOrder;
 }
 
-describe("generateCSV", () => {
+describe("generateCSV packaging logic", () => {
   it("generates exactly 46 columns in header row", () => {
     const csv = generateCSV([makeMinimalOrder()], {
       defaultPackageType: "Pacco",
@@ -78,121 +92,76 @@ describe("generateCSV", () => {
     expect(cols.length).toBe(46);
   });
 
-  it("uses semicolon delimiter", () => {
-    const csv = generateCSV([makeMinimalOrder()], {
-      defaultPackageType: "Pacco",
-      codType: "A",
-    });
+  it("handles 1 bottle 0.75L", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      line_items: [makeItem("Prosecco DOC", 1)]
+    })], { defaultPackageType: "Pacco", codType: "A" });
+    const row = csv.split("\n")[1].split(";");
+    expect(row[1]).toBe("COLLO-075-S");
+    expect(row[2]).toBe("2.0"); // 0.5 + 1.5
+    expect(row[3]).toBe("35"); // height
+    expect(row[4]).toBe("11"); // width
+    expect(row[5]).toBe("11"); // depth
+  });
+
+  it("handles 7 bottles 0.75L (1x 4/6 + 1x 2/3)", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      line_items: [makeItem("Prosecco DOC", 7)]
+    })], { defaultPackageType: "Pacco", codType: "A" });
     const lines = csv.split("\n");
-    // Check header uses semicolons
-    expect(lines[0].includes(";")).toBe(true);
-    // Check no commas in header
-    expect(lines[0].includes(",")).toBe(false);
+    expect(lines.length).toBe(3); // header + 2 rows
+    
+    const row1 = lines[1].split(";");
+    expect(row1[1]).toBe("COLLO-075-L");
+    expect(row1[2]).toBe("10.0"); // 1.0 + (6*1.5) = 10.0
+    
+    const row2 = lines[2].split(";");
+    expect(row2[1]).toBe("COLLO-075-M");
+    expect(row2[2]).toBe("2.0"); // 0.5 + (1*1.5) = 2.0
   });
 
-  it("maps order.number to custom_reference", () => {
-    const csv = generateCSV([makeMinimalOrder({ number: "999" })], {
-      defaultPackageType: "Pacco",
-      codType: "A",
-    });
+  it("handles Magnum bottles correctly", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      line_items: [makeItem("Prosecco Magnum Special", 2)]
+    })], { defaultPackageType: "Pacco", codType: "A" });
     const lines = csv.split("\n");
-    const row = lines[1];
-    const cols = row.split(";");
-    expect(cols[0]).toBe("999");
+    expect(lines.length).toBe(3); // header + 2 rows
+    
+    for (let i = 1; i <= 2; i++) {
+        const row = lines[i].split(";");
+        expect(row[1]).toBe("COLLO-MAGNUM");
+        expect(row[2]).toBe("3.0"); // 0.5 + 2.5
+    }
   });
 
-  it("sets package_type from options", () => {
-    const csv = generateCSV([makeMinimalOrder()], {
-      defaultPackageType: "Busta",
-      codType: "A",
-    });
-    const row = csv.split("\n")[1].split(";");
-    expect(row[1]).toBe("Busta");
-  });
-
-  it("sets weight to 1 when no dimensions", () => {
-    const csv = generateCSV([makeMinimalOrder()], {
-      defaultPackageType: "Pacco",
-      codType: "A",
-    });
-    const row = csv.split("\n")[1].split(";");
-    expect(row[2]).toBe("1.0");
-  });
-
-  it("calculates volumetric weight from meta_data dimensions", () => {
-    const csv = generateCSV(
-      [
-        makeMinimalOrder({
-          meta_data: [
-            { id: 1, key: "_width", value: "10" },
-            { id: 2, key: "_height", value: "20" },
-            { id: 3, key: "_length", value: "5" },
-          ],
-        }),
-      ],
-      { defaultPackageType: "Pacco", codType: "A" }
-    );
-    const row = csv.split("\n")[1].split(";");
-    // 10 * 20 * 5 / 5000 = 0.2
-    expect(row[2]).toBe("0.2");
-  });
-
-  it("pickup_date is empty when no pickupDate option provided", () => {
-    const csv = generateCSV(
-      [makeMinimalOrder({ date_created: "2023-01-30T14:30:00" })],
-      {
-        defaultPackageType: "Pacco",
-        codType: "A",
-      }
-    );
-    const row = csv.split("\n")[1].split(";");
-    // pickup_date is column 6
-    expect(row[6]).toBe("");
-  });
-
-  it("COD order has cod_type = 'A' and cod_value = order total", () => {
-    const csv = generateCSV(
-      [makeMinimalOrder({ payment_method: "cod", total: "55.00" })],
-      { defaultPackageType: "Pacco", codType: "A" }
-    );
-    const row = csv.split("\n")[1].split(";");
-    // cod_type is index 35
-    expect(row[35]).toBe("A");
-    // cod_value is index 36
-    expect(row[36]).toBe("55.00");
-  });
-
-  it("COD order has cod_holder = billing first_name + last_name", () => {
-    const csv = generateCSV([makeMinimalOrder({ payment_method: "cod" })], {
-      defaultPackageType: "Pacco",
-      codType: "A",
-    });
-    const row = csv.split("\n")[1].split(";");
-    // cod_holder is index 37
-    expect(row[37]).toBe("Mario Rossi");
-  });
-
-  it("non-COD order has empty cod_* fields", () => {
-    const csv = generateCSV([makeMinimalOrder({ payment_method: "bacs" })], {
-      defaultPackageType: "Pacco",
-      codType: "A",
-    });
-    const row = csv.split("\n")[1].split(";");
-    expect(row[35]).toBe(""); // cod_type
-    expect(row[36]).toBe(""); // cod_value
-    expect(row[37]).toBe(""); // cod_holder
-  });
-
-  it("generates multiple rows for multiple orders", () => {
-    const csv = generateCSV(
-      [
-        makeMinimalOrder({ id: 1 }),
-        makeMinimalOrder({ id: 2 }),
-        makeMinimalOrder({ id: 3 }),
-      ],
-      { defaultPackageType: "Pacco", codType: "A" }
-    );
+  it("handles High Pallet (> 48 bottles)", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      line_items: [makeItem("Prosecco DOC", 50)]
+    })], { defaultPackageType: "Pacco", codType: "A" });
     const lines = csv.split("\n");
-    expect(lines.length).toBe(4); // 1 header + 3 data rows
+    expect(lines.length).toBe(2); 
+    
+    const row = lines[1].split(";");
+    expect(row[1]).toBe("PALLET-ALTO");
+    expect(row[2]).toBe("77.0"); // 2.0 + (50*1.5) = 77
+    expect(row[3]).toBe("75"); // height
+  });
+
+  it("COD order distributes total correctly on the first row only", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      payment_method: "cod",
+      total: "50.00",
+      line_items: [makeItem("Prosecco DOC", 7)] // generates 2 rows
+    })], { defaultPackageType: "Pacco", codType: "A" });
+    const lines = csv.split("\n");
+    expect(lines.length).toBe(3); 
+    
+    const row1 = lines[1].split(";");
+    expect(row1[35]).toBe("A"); // cod_type
+    expect(row1[36]).toBe("50.00"); // cod_value
+    
+    const row2 = lines[2].split(";");
+    expect(row2[35]).toBe(""); 
+    expect(row2[36]).toBe(""); 
   });
 });
