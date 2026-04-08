@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+# Check only staged added lines to avoid false positives from docs/placeholders
+# and from unrelated unstaged changes.
+STAGED_ADDITIONS="$(git diff --cached --no-color --unified=0 | grep -E '^\+[^+]' || true)"
+
+SECRET_PATTERN="ENCRYPTION_KEY[[:space:]]*[:=][[:space:]]*[0-9a-fA-F]{64}|(^|[^A-Za-z0-9_])ck_[A-Za-z0-9]{20,}|(^|[^A-Za-z0-9_])cs_[A-Za-z0-9]{20,}"
+
+if echo "$STAGED_ADDITIONS" | grep -E "$SECRET_PATTERN" > /dev/null 2>&1; then
+  echo "ERROR: Possible secret detected in staged changes."
+  echo "Use placeholders in docs/examples and keep real credentials in local env vars only."
+  exit 1
+fi
+
+npx tsc --noEmit
