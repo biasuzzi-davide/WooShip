@@ -30,19 +30,19 @@ export default function WarningSummary({
               />
             </svg>
             <h2 className="text-lg font-semibold text-gray-900">
-              Missing Address Data
+              Dati Indirizzo Mancanti
             </h2>
           </div>
           <p className="text-sm text-gray-500 mb-4">
-            {warnings.length} order{warnings.length !== 1 ? "s" : ""} with missing required fields.
-            The CSV will include empty values for these fields.
+            Ci sono {warnings.length} ordin{warnings.length !== 1 ? "i" : "e"} con campi di spedizione obbligatori mancanti.
+            Il CSV conterrà valori vuoti per questi campi.
           </p>
           <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-gray-700">Order</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-700">Missing Fields</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-700">Ordine</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-700">Campi Mancanti</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -61,13 +61,13 @@ export default function WarningSummary({
             onClick={onCancel}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            Cancel
+            Annulla
           </button>
           <button
             onClick={onProceed}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Proceed with Download
+            Procedi al Download
           </button>
         </div>
       </div>

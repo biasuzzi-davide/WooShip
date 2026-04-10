@@ -13,13 +13,13 @@ export default function Header() {
               href="/credentials"
               className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
-              Credentials
+              Credenziali
             </Link>
             <Link
               href="/orders"
               className="text-sm font-medium text-gray-900"
             >
-              Orders
+              Ordini
             </Link>
           </nav>
         </div>

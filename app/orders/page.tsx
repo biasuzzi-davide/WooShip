@@ -79,7 +79,7 @@ export default function OrdersPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Failed to fetch orders");
+        setError(data.error ?? "Impossibile scaricare gli ordini");
         return;
       }
 
@@ -95,7 +95,7 @@ export default function OrdersPage() {
       setFetchedOrderIds(uniqueFetchedIds);
       setSelectedIds(new Set(uniqueFetchedIds));
     } catch {
-      setError("Network error while fetching orders");
+      setError("Errore di rete durante il download degli ordini");
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +156,7 @@ export default function OrdersPage() {
 
   async function downloadCSV(selectedOrders: WooOrder[]) {
     if (!exportToken || fetchedOrderIds.length === 0) {
-      setError("Session expired. Please re-fetch orders.");
+      setError("Sessione scaduta. Per favore ricarica gli ordini.");
       return;
     }
 
@@ -186,13 +186,13 @@ export default function OrdersPage() {
       });
 
       if (res.status === 403) {
-        setError("Export token expired. Please re-fetch orders.");
+        setError("Token di esportazione scaduto. Ricarica gli ordini.");
         return;
       }
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "Export failed");
+        setError(data.error ?? "Esportazione fallita");
         return;
       }
 
@@ -206,7 +206,7 @@ export default function OrdersPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      setError("Network error during export");
+      setError("Errore di rete durante l'esportazione");
     } finally {
       setIsExporting(false);
       setShowWarningModal(false);
@@ -221,9 +221,9 @@ export default function OrdersPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Ordini</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Select orders and download as CSV for your shipping software.
+              Seleziona gli ordini e scaricali come frammento CSV per il tuo software di spedizione.
             </p>
           </div>
           <button
@@ -231,7 +231,7 @@ export default function OrdersPage() {
             disabled={isLoading}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {isLoading ? "Loading..." : "Fetch Orders"}
+            {isLoading ? "Caricamento in corso..." : "Aggiorna Ordini"}
           </button>
         </div>
 
@@ -301,12 +301,12 @@ export default function OrdersPage() {
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Order #</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Date</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Customer</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Total</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">COD</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Ordine #</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Data</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Stato</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Cliente</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Totale</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Contrassegno (COD)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -335,7 +335,7 @@ export default function OrdersPage() {
                         <td className="px-4 py-3 font-mono text-gray-900">
                           #{order.number}
                           {hasWarning && (
-                            <span className="ml-2 text-xs text-amber-600">(missing data)</span>
+                            <span className="ml-2 text-xs text-amber-600">(dati mancanti)</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-gray-500">{formatDate(order.date_created)}</td>
@@ -380,24 +380,29 @@ export default function OrdersPage() {
                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
               />
             </svg>
-            <p className="text-gray-500">No orders found.</p>
-            <p className="text-sm text-gray-400 mt-1">Click &quot;Fetch Orders&quot; to load from WooCommerce.</p>
+            <p className="text-gray-500">Nessun ordine trovato.</p>
+            <p className="text-sm text-gray-400 mt-1">Clicca &quot;Aggiorna Ordini&quot; per caricarli da WooCommerce.</p>
           </div>
         )}
 
         {/* Download bar */}
         {selectedIds.size > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                {selectedIds.size} order{selectedIds.size !== 1 ? "s" : ""} selected
-              </p>
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-4xl bg-white/80 backdrop-blur-md border border-gray-200/50 p-4 rounded-2xl shadow-2xl z-50 transition-all animate-in slide-in-from-bottom-5 duration-300">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center bg-blue-100 text-blue-700 font-bold w-8 h-8 rounded-full">
+                  {selectedIds.size}
+                </div>
+                <p className="text-sm font-medium text-gray-700">
+                  ordin{selectedIds.size !== 1 ? "i" : "e"} selezionat{selectedIds.size !== 1 ? "i" : "o"}
+                </p>
+              </div>
               <button
                 onClick={handleDownload}
                 disabled={isExporting}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-md"
               >
-                {isExporting ? "Generating..." : "Download CSV"}
+                {isExporting ? "Generazione in corso..." : "Scarica CSV"}
               </button>
             </div>
           </div>

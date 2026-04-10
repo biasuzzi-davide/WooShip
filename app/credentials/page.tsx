@@ -59,13 +59,13 @@ export default function CredentialsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Failed to save credentials");
+        setError(data.error ?? "Impossibile salvare le credenziali");
         return;
       }
 
       setIsConnected(true);
       setStoredStoreUrl(formattedUrl);
-      setSuccess("Credentials saved successfully!");
+      setSuccess("Credenziali salvate con successo!");
       setStoreUrl("");
       setConsumerKey("");
       setConsumerSecret("");
@@ -75,7 +75,7 @@ export default function CredentialsPage() {
         window.location.href = "/orders";
       }, 1500);
     } catch {
-      setError("Network error. Please try again.");
+      setError("Errore di rete. Riprova per favore.");
     } finally {
       setIsSaving(false);
     }
@@ -93,13 +93,13 @@ export default function CredentialsPage() {
 
       if (res.ok) {
         setSuccess(
-          `Connected! Found ${data.total} orders. (Store: ${storedStoreUrl ?? storeUrl})`
+          `Connessione riuscita! Trovati ${data.total} ordini. (Negozio: ${storedStoreUrl ?? storeUrl})`
         );
       } else {
-        setError(data.error ?? "Connection failed");
+        setError(data.error ?? "Connessione fallita");
       }
     } catch {
-      setError("Network error during connection test.");
+      setError("Errore di rete durante il test di connessione.");
     } finally {
       setIsTesting(false);
     }
@@ -116,15 +116,15 @@ export default function CredentialsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Failed to clear credentials");
+        setError(data.error ?? "Impossibile rimuovere le credenziali");
         return;
       }
 
       setIsConnected(false);
       setStoredStoreUrl(null);
-      setSuccess("Credentials cleared.");
+      setSuccess("Credenziali rimosse.");
     } catch {
-      setError("Network error. Please try again.");
+      setError("Errore di rete. Riprova per favore.");
     } finally {
       setIsDeleting(false);
     }
@@ -137,7 +137,7 @@ export default function CredentialsPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">WooShip</h1>
           <p className="text-gray-500 mt-1">
-            WooCommerce → Shipping CSV
+            WooCommerce → Spedizioni CSV
           </p>
         </div>
 
@@ -146,11 +146,11 @@ export default function CredentialsPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span className="font-medium text-gray-900">Connected</span>
+              <span className="font-medium text-gray-900">Connesso</span>
             </div>
             {storedStoreUrl && (
               <p className="text-sm text-gray-500 mb-4">
-                Store: <code className="bg-gray-100 px-1 rounded">{storedStoreUrl}</code>
+                Negozio: <code className="bg-gray-100 px-1 rounded">{storedStoreUrl}</code>
               </p>
             )}
             <div className="flex gap-3">
@@ -158,13 +158,13 @@ export default function CredentialsPage() {
                 href="/orders"
                 className="flex-1 text-center bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
-                Go to Orders
+                Vai agli Ordini
               </a>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
               >
-                Clear
+                Rimuovi
               </button>
             </div>
           </div>
@@ -173,9 +173,9 @@ export default function CredentialsPage() {
         {/* Delete Confirmation */}
         {showDeleteConfirm && (
           <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6 mb-6">
-            <h3 className="font-medium text-gray-900 mb-2">Clear credentials?</h3>
+            <h3 className="font-medium text-gray-900 mb-2">Rimuovere le credenziali?</h3>
             <p className="text-sm text-gray-500 mb-4">
-              This will remove your stored WooCommerce credentials from this browser.
+              Questo rimuoverà le tue credenziali WooCommerce salvate in questo browser.
             </p>
             <div className="flex gap-3">
               <button
@@ -183,13 +183,13 @@ export default function CredentialsPage() {
                 disabled={isDeleting}
                 className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {isDeleting ? "Clearing..." : "Yes, clear"}
+                {isDeleting ? "Rimozione in corso..." : "Sì, rimuovi"}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Annulla
               </button>
             </div>
           </div>
@@ -198,13 +198,13 @@ export default function CredentialsPage() {
         {/* Credentials Form */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            {isConnected ? "Update Credentials" : "Enter WooCommerce Credentials"}
+            {isConnected ? "Aggiorna Credenziali" : "Inserisci Credenziali WooCommerce"}
           </h2>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Store URL
+                URL Negozio
               </label>
               <input
                 type="text"
@@ -219,7 +219,7 @@ export default function CredentialsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Consumer Key
+                Chiave Cliente (Consumer Key)
               </label>
               <input
                 type="text"
@@ -232,7 +232,7 @@ export default function CredentialsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Consumer Secret
+                Segreto Cliente (Consumer Secret)
               </label>
               <div className="relative">
                 <input
@@ -281,7 +281,7 @@ export default function CredentialsPage() {
                 disabled={!canSubmit || isSaving}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? "Saving..." : "Save Credentials"}
+                {isSaving ? "Salvataggio..." : "Salva Credenziali"}
               </button>
               <button
                 type="button"
@@ -289,14 +289,14 @@ export default function CredentialsPage() {
                 disabled={(!storedStoreUrl && !storeUrl) || isTesting}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isTesting ? "Testing..." : "Test"}
+                {isTesting ? "Test in corso..." : "Testa Connessione"}
               </button>
             </div>
           </form>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Credentials are encrypted and stored in a secure HTTP-only cookie.
+          Le credenziali sono crittografate e archiviate in modo sicuro in questo browser.
         </p>
       </div>
     </div>

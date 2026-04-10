@@ -31,10 +31,10 @@ export default function CSVOptions({
 }: CSVOptionsProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">CSV Options</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">Opzioni CSV</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Package Type</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Tipo di Pacco</label>
           <select
             value={defaultPackageType}
             onChange={(e) => onPackageTypeChange(e.target.value as PackageType)}
@@ -45,7 +45,7 @@ export default function CSVOptions({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">COD Type</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Tipo Contrassegno</label>
           <select
             value={codType}
             onChange={(e) => onCodTypeChange(e.target.value as CodType)}
@@ -57,7 +57,7 @@ export default function CSVOptions({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Carrier</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Corriere (Mittente)</label>
           <input
             type="text"
             value={carrier}
@@ -67,7 +67,7 @@ export default function CSVOptions({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Service</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Servizio</label>
           <input
             type="text"
             value={service}
@@ -77,7 +77,7 @@ export default function CSVOptions({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Pickup Date</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Data Ritiro</label>
           <input
             type="date"
             value={pickupDate}
@@ -93,7 +93,7 @@ export default function CSVOptions({
               onChange={(e) => onShowWarningsChange(e.target.checked)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            Warnings
+            Avvisi
           </label>
         </div>
       </div>
