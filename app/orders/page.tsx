@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import FilterPanel from "@/components/FilterPanel";
 import CSVOptions from "@/components/CSVOptions";
 import WarningSummary from "@/components/WarningSummary";
+import OrderDetailModal from "@/components/OrderDetailModal";
 import type { WooOrder, PackageType, CodType } from "@/types";
 
 // Inline warning check (avoiding server-side lib imports in client component)
@@ -46,9 +47,12 @@ export default function OrdersPage() {
   const [pickupDate, setPickupDate] = useState("");
   const [showWarnings, setShowWarnings] = useState(true);
 
-  // Modal state
+  // Warning modal state
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warnings, setWarnings] = useState<ReturnType<typeof getWarnings>>([]);
+
+  // Order detail modal state
+  const [detailOrder, setDetailOrder] = useState<WooOrder | null>(null);
 
   // Check credentials on mount
   useEffect(() => {
@@ -307,6 +311,7 @@ export default function OrdersPage() {
                     <th className="px-4 py-3 text-left font-medium text-gray-700">Cliente</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700">Totale</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700">Contrassegno (COD)</th>
+                     <th className="px-4 py-3 text-left font-medium text-gray-700">Dettaglio</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -354,6 +359,19 @@ export default function OrdersPage() {
                               COD
                             </span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            id={`detail-btn-${order.id}`}
+                            onClick={() => setDetailOrder(order)}
+                            title="Visualizza dettaglio ordine"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 active:scale-95 transition-all"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            Dettaglio
+                          </button>
                         </td>
                       </tr>
                     );
@@ -415,6 +433,14 @@ export default function OrdersPage() {
           warnings={warnings}
           onProceed={() => downloadCSV(orders.filter((o) => selectedIds.has(o.id)))}
           onCancel={() => setShowWarningModal(false)}
+        />
+      )}
+
+      {/* Order detail modal */}
+      {detailOrder && (
+        <OrderDetailModal
+          order={detailOrder}
+          onClose={() => setDetailOrder(null)}
         />
       )}
     </div>

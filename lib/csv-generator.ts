@@ -1,4 +1,5 @@
 import type { WooOrder, CSVOptions } from "@/types";
+import { getPackagingForOrder } from "./packaging";
 
 // The exact 46-column header from modello-csv.csv
 const CSV_HEADER =
@@ -18,101 +19,7 @@ function csvValue(value: unknown): string {
   return str;
 }
 
-interface PackageInfo {
-  type: string;
-  weight: number;
-  height: string;
-  width: string;
-  depth: string;
-}
 
-/**
- * Generates an array of packages based on the business rules.
- */
-function getPackagesForOrder(order: WooOrder): PackageInfo[] {
-  let qty_075 = 0;
-  let qty_magnum = 0;
-
-  for (const item of order.line_items ?? []) {
-    const name = item.name?.toLowerCase() || "";
-    if (name.includes("magnum")) {
-      qty_magnum += item.quantity;
-    } else {
-      qty_075 += item.quantity;
-    }
-  }
-
-  const totalBottles = qty_075 + qty_magnum;
-  const packages: PackageInfo[] = [];
-
-  if (totalBottles === 0) {
-    // Fallback if no valid items, emit a basic single package
-    return [{
-      type: "COLLO-STANDARD",
-      weight: 1.0,
-      height: "", width: "", depth: ""
-    }];
-  }
-
-  if (totalBottles > 48) {
-    packages.push({
-      type: "PALLET-ALTO",
-      weight: 2.0 + (qty_075 * 1.5) + (qty_magnum * 2.5),
-      height: "75", width: "60", depth: "80"
-    });
-  } else if (totalBottles >= 37 && totalBottles <= 48) {
-    packages.push({
-      type: "PALLET-BASSO",
-      weight: 2.0 + (qty_075 * 1.5) + (qty_magnum * 2.5),
-      height: "45", width: "60", depth: "80"
-    });
-  } else {
-    // <= 36 bottles
-    for (let i = 0; i < qty_magnum; i++) {
-      packages.push({
-        type: "COLLO-MAGNUM",
-        weight: 0.5 + 2.5, // 3.0
-        height: "37", width: "14", depth: "14"
-      });
-    }
-
-    if (qty_075 === 1) {
-      packages.push({
-        type: "COLLO-075-S",
-        weight: 0.5 + 1.5, // 2.0
-        height: "35", width: "11", depth: "11"
-      });
-    } else if (qty_075 > 0) {
-      let unassigned = qty_075;
-      while (unassigned > 0) {
-        if (unassigned >= 6) {
-          packages.push({
-            type: "COLLO-075-L",
-            weight: 1.0 + (6 * 1.5),
-            height: "39", width: "30", depth: "41"
-          });
-          unassigned -= 6;
-        } else if (unassigned === 4 || unassigned === 5) {
-          packages.push({
-            type: "COLLO-075-L",
-            weight: 1.0 + (unassigned * 1.5),
-            height: "39", width: "30", depth: "41"
-          });
-          unassigned = 0;
-        } else if (unassigned >= 1 && unassigned <= 3) {
-          packages.push({
-            type: "COLLO-075-M",
-            weight: 0.5 + (unassigned * 1.5),
-            height: "39", width: "15", depth: "41"
-          });
-          unassigned = 0;
-        }
-      }
-    }
-  }
-
-  return packages;
-}
 
 /**
  * Generates CSV rows for a single WooCommerce order.
@@ -126,7 +33,7 @@ function orderToRows(
   const billing = order.billing;
   const shipping = order.shipping;
 
-  const packages = getPackagesForOrder(order);
+  const { packages } = getPackagingForOrder(order);
   const rows: string[][] = [];
 
   for (let i = 0; i < packages.length; i++) {
