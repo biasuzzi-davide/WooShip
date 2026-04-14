@@ -14,3 +14,4 @@ if echo "$STAGED_ADDITIONS" | grep -E "$SECRET_PATTERN" > /dev/null 2>&1; then
 fi
 
 npx tsc --noEmit
+npm test
