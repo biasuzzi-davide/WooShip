@@ -1,4 +1,4 @@
-import type { WooOrder, CSVOptions } from "@/types";
+import type { WooOrder, CSVOptions, PackageType } from "@/types";
 import { getPackagingForOrder } from "./packaging";
 
 // The exact 46-column header from modello-csv.csv
@@ -19,6 +19,86 @@ function csvValue(value: unknown): string {
   return str;
 }
 
+interface SplitAddressResult {
+  street: string;
+  streetNumber: string;
+}
+
+interface SenderProfile {
+  firstName: string;
+  lastName: string;
+  street: string;
+  streetNumber: string;
+  co: string;
+  zip: string;
+  city: string;
+  province: string;
+  country: string;
+  phone: string;
+  email: string;
+}
+
+function getEnvValue(name: string): string {
+  return (process.env[name] ?? "").trim();
+}
+
+function splitStreetAndNumber(address: string | undefined): SplitAddressResult {
+  const raw = (address ?? "").trim();
+  if (!raw) return { street: "", streetNumber: "" };
+
+  // Split a trailing street number like "Via Roma 12" or "Via Roma, 12/A".
+  const trailingNumber = raw.match(/^(.*?)[,\s]+(\d[\dA-Za-z\-\/]*)$/);
+  if (!trailingNumber) {
+    return { street: raw, streetNumber: "" };
+  }
+
+  return {
+    street: trailingNumber[1].trim(),
+    streetNumber: trailingNumber[2].trim(),
+  };
+}
+
+function getSenderProfileFromEnv(): SenderProfile {
+  const streetInput = getEnvValue("TP_SENDER_STREET");
+  const splitStreet = splitStreetAndNumber(streetInput);
+  const explicitStreetNumber = getEnvValue("TP_SENDER_STREET_NUMBER");
+
+  return {
+    firstName: getEnvValue("TP_SENDER_FIRST_NAME"),
+    lastName: getEnvValue("TP_SENDER_LAST_NAME"),
+    street: splitStreet.street,
+    streetNumber: explicitStreetNumber || splitStreet.streetNumber,
+    co: getEnvValue("TP_SENDER_CO"),
+    zip: getEnvValue("TP_SENDER_ZIP"),
+    city: getEnvValue("TP_SENDER_CITY"),
+    province: getEnvValue("TP_SENDER_PROVINCE"),
+    country: getEnvValue("TP_SENDER_COUNTRY"),
+    phone: getEnvValue("TP_SENDER_PHONE"),
+    email: getEnvValue("TP_SENDER_EMAIL"),
+  };
+}
+
+function mapPackageType(packageCode: string, defaultPackageType: PackageType): string {
+  const normalized = packageCode.toUpperCase();
+
+  if (normalized.includes("PALLET")) return "pallet";
+  if (normalized.includes("BUSTA") || normalized.includes("ENVELOPE")) return "busta";
+  if (normalized.includes("COLLO") || normalized.includes("PACK")) return "pacco";
+
+  return defaultPackageType === "Busta" ? "busta" : "pacco";
+}
+
+function formatPickupDate(pickupDate?: string): string {
+  if (!pickupDate) return "";
+
+  const normalized = pickupDate.trim();
+  const isoDate = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!isoDate) return normalized;
+
+  const [, year, month, day] = isoDate;
+  return `${day}/${month}/${year}`;
+}
+
 
 
 /**
@@ -32,6 +112,10 @@ function orderToRows(
   const isCOD = order.payment_method === "cod";
   const billing = order.billing;
   const shipping = order.shipping;
+  const sender = getSenderProfileFromEnv();
+  const destination = splitStreetAndNumber(shipping.address_1);
+  const toFirstName = shipping.first_name || billing.first_name;
+  const toLastName = shipping.last_name || billing.last_name;
 
   const { packages } = getPackagingForOrder(order);
   const rows: string[][] = [];
@@ -53,34 +137,34 @@ function orderToRows(
     const row: string[] = [
       // 1-10
       csvValue(order.number), // custom_reference
-      csvValue(pkg.type), // package_type
+      csvValue(mapPackageType(pkg.type, options.defaultPackageType)), // package_type
       csvValue(pkg.weight.toFixed(1)), // weight
       csvValue(pkg.height), // height
       csvValue(pkg.width), // width
       csvValue(pkg.depth), // depth
-      csvValue(options.pickupDate ?? ""), // pickup_date
+      csvValue(formatPickupDate(options.pickupDate)), // pickup_date
       csvValue(options.carrier ?? ""), // carrier
       csvValue(options.service ?? ""), // service
-      csvValue(""), // from_first_name
+      csvValue(sender.firstName), // from_first_name
 
       // 11-20
-      csvValue(""), // from_last_name
-      csvValue(""), // from_street
-      csvValue(""), // from_street_number
-      csvValue(""), // from_co
-      csvValue(""), // from_zip
-      csvValue(""), // from_city
-      csvValue(""), // from_province
-      csvValue(""), // from_country
-      csvValue(""), // from_phone
-      csvValue(""), // from_email
+      csvValue(sender.lastName), // from_last_name
+      csvValue(sender.street), // from_street
+      csvValue(sender.streetNumber), // from_street_number
+      csvValue(sender.co), // from_co
+      csvValue(sender.zip), // from_zip
+      csvValue(sender.city), // from_city
+      csvValue(sender.province), // from_province
+      csvValue(sender.country), // from_country
+      csvValue(sender.phone), // from_phone
+      csvValue(sender.email), // from_email
 
       // 21-30
-      csvValue(""), // notes
-      csvValue(shipping.first_name), // to_first_name
-      csvValue(shipping.last_name), // to_last_name
-      csvValue(shipping.address_1), // to_street
-      csvValue(""), // to_street_number (WooCommerce doesn't separate this)
+      csvValue(order.customer_note ?? ""), // notes
+      csvValue(toFirstName), // to_first_name
+      csvValue(toLastName), // to_last_name
+      csvValue(destination.street), // to_street
+      csvValue(destination.streetNumber), // to_street_number
       csvValue(shipping.address_2), // to_co
       csvValue(shipping.postcode), // to_zip
       csvValue(shipping.city), // to_city
@@ -88,7 +172,7 @@ function orderToRows(
       csvValue(shipping.country), // to_country
 
       // 31-40
-      csvValue(shipping.phone ?? ""), // to_phone
+  csvValue(shipping.phone ?? billing.phone ?? ""), // to_phone
       csvValue(billing.email ?? ""), // to_email
       csvValue(""), // insurance_value
       csvValue(""), // from_cp_code

@@ -101,6 +101,34 @@ WOOCOMMERCE_CONSUMER_KEY=ck_xxx
 WOOCOMMERCE_CONSUMER_SECRET=cs_xxx
 ```
 
+Profilo mittente Truckpooling (consigliato in `.env.local`, non versionato):
+
+```env
+TP_SENDER_LAST_NAME="Ragione sociale o cognome mittente"
+TP_SENDER_FIRST_NAME="Nome mittente"
+TP_SENDER_STREET="Via mittente"
+TP_SENDER_STREET_NUMBER="Numero civico"
+TP_SENDER_CITY="Citta"
+TP_SENDER_PROVINCE="Provincia ISO2"
+TP_SENDER_ZIP="CAP"
+TP_SENDER_COUNTRY="IT"
+TP_SENDER_PHONE="+39 ..."
+TP_SENDER_EMAIL="mail@dominio.it"
+# opzionale
+TP_SENDER_CO="presso/campanello"
+```
+
+In export CSV il campo `package_type` viene normalizzato in formato Truckpooling:
+
+- `COLLO-*` -> `pacco`
+- `PALLET-*` -> `pallet`
+
+Dettagli export aggiuntivi:
+
+- `pickup_date` viene convertito automaticamente da `YYYY-MM-DD` a `DD/MM/YYYY`
+- `to_street` e `to_street_number` vengono separati automaticamente quando l'indirizzo contiene il civico in coda (es. `Via Roma 10`)
+- `to_phone` usa prima `shipping.phone`, con fallback a `billing.phone`
+
 Protezione accesso (facoltativa in locale, bloccante in produzione Vercel se non impostata):
 
 ```env

@@ -1,6 +1,52 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { generateCSV } from "./csv-generator";
 import type { WooOrder, WooLineItem } from "@/types";
+
+const SENDER_ENV_KEYS = [
+  "TP_SENDER_FIRST_NAME",
+  "TP_SENDER_LAST_NAME",
+  "TP_SENDER_STREET",
+  "TP_SENDER_STREET_NUMBER",
+  "TP_SENDER_ZIP",
+  "TP_SENDER_CITY",
+  "TP_SENDER_PROVINCE",
+  "TP_SENDER_COUNTRY",
+  "TP_SENDER_PHONE",
+  "TP_SENDER_EMAIL",
+] as const;
+
+const SENDER_ENV_VALUES: Record<(typeof SENDER_ENV_KEYS)[number], string> = {
+  TP_SENDER_FIRST_NAME: "Vini Dufour",
+  TP_SENDER_LAST_NAME: "Societa Agricola Rossi de Rubeis Giovanna Srl",
+  TP_SENDER_STREET: "Martiri della Liberta",
+  TP_SENDER_STREET_NUMBER: "55",
+  TP_SENDER_ZIP: "31025",
+  TP_SENDER_CITY: "Santa Lucia di Piave",
+  TP_SENDER_PROVINCE: "TV",
+  TP_SENDER_COUNTRY: "IT",
+  TP_SENDER_PHONE: "+39 392 2504920",
+  TP_SENDER_EMAIL: "tommaso@vinidufour.com",
+};
+
+const originalSenderEnv: Partial<Record<(typeof SENDER_ENV_KEYS)[number], string | undefined>> = {};
+
+beforeEach(() => {
+  for (const key of SENDER_ENV_KEYS) {
+    originalSenderEnv[key] = process.env[key];
+    process.env[key] = SENDER_ENV_VALUES[key];
+  }
+});
+
+afterEach(() => {
+  for (const key of SENDER_ENV_KEYS) {
+    const original = originalSenderEnv[key];
+    if (original === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = original;
+    }
+  }
+});
 
 function makeItem(name: string, quantity: number): WooLineItem {
   return {
@@ -92,12 +138,31 @@ describe("generateCSV packaging logic", () => {
     expect(cols.length).toBe(46);
   });
 
+  it("fills sender fields from environment variables", () => {
+    const csv = generateCSV([makeMinimalOrder()], {
+      defaultPackageType: "Pacco",
+      codType: "A",
+    });
+
+    const row = csv.split("\n")[1].split(";");
+    expect(row[9]).toBe("Vini Dufour");
+    expect(row[10]).toBe("Societa Agricola Rossi de Rubeis Giovanna Srl");
+    expect(row[11]).toBe("Martiri della Liberta");
+    expect(row[12]).toBe("55");
+    expect(row[14]).toBe("31025");
+    expect(row[15]).toBe("Santa Lucia di Piave");
+    expect(row[16]).toBe("TV");
+    expect(row[17]).toBe("IT");
+    expect(row[18]).toBe("+39 392 2504920");
+    expect(row[19]).toBe("tommaso@vinidufour.com");
+  });
+
   it("handles 1 bottle 0.75L", () => {
     const csv = generateCSV([makeMinimalOrder({
       line_items: [makeItem("Prosecco DOC", 1)]
     })], { defaultPackageType: "Pacco", codType: "A" });
     const row = csv.split("\n")[1].split(";");
-    expect(row[1]).toBe("COLLO-075-S");
+    expect(row[1]).toBe("pacco");
     expect(row[2]).toBe("2.0"); // 0.5 + 1.5
     expect(row[3]).toBe("35"); // height
     expect(row[4]).toBe("11"); // width
@@ -112,11 +177,11 @@ describe("generateCSV packaging logic", () => {
     expect(lines.length).toBe(3); // header + 2 rows
     
     const row1 = lines[1].split(";");
-    expect(row1[1]).toBe("COLLO-075-L");
+    expect(row1[1]).toBe("pacco");
     expect(row1[2]).toBe("10.0"); // 1.0 + (6*1.5) = 10.0
     
     const row2 = lines[2].split(";");
-    expect(row2[1]).toBe("COLLO-075-M");
+    expect(row2[1]).toBe("pacco");
     expect(row2[2]).toBe("2.0"); // 0.5 + (1*1.5) = 2.0
   });
 
@@ -129,7 +194,7 @@ describe("generateCSV packaging logic", () => {
     
     for (let i = 1; i <= 2; i++) {
         const row = lines[i].split(";");
-        expect(row[1]).toBe("COLLO-MAGNUM");
+      expect(row[1]).toBe("pacco");
         expect(row[2]).toBe("3.0"); // 0.5 + 2.5
     }
   });
@@ -142,7 +207,7 @@ describe("generateCSV packaging logic", () => {
     expect(lines.length).toBe(2); 
     
     const row = lines[1].split(";");
-    expect(row[1]).toBe("PALLET-ALTO");
+    expect(row[1]).toBe("pallet");
     expect(row[2]).toBe("77.0"); // 2.0 + (50*1.5) = 77
     expect(row[3]).toBe("75"); // height
   });
