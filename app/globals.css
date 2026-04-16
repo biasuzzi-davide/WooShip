@@ -18,3 +18,117 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes wooship-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes wooship-shimmer {
+    from {
+      transform: translateX(-150%);
+    }
+    to {
+      transform: translateX(220%);
+    }
+  }
+
+  @keyframes wooship-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes wooship-progress {
+    0% {
+      transform: translateX(-120%);
+    }
+    50% {
+      transform: translateX(80%);
+    }
+    100% {
+      transform: translateX(240%);
+    }
+  }
+
+  @keyframes wooship-fade-in {
+    from {
+      opacity: 0;
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+
+  .wooship-skeleton-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgb(229 231 235 / 0.9);
+    border-radius: 0.75rem;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.94), rgba(249, 250, 251, 0.96));
+    animation: wooship-fade-up 420ms ease-out both;
+  }
+
+  .wooship-skeleton-line {
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    height: 0.65rem;
+    border-radius: 9999px;
+    background: rgb(226 232 240 / 0.9);
+  }
+
+  .wooship-skeleton-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 42%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+    animation: wooship-shimmer 1.4s linear infinite;
+  }
+
+  .wooship-spinner {
+    width: 0.95rem;
+    height: 0.95rem;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    border-top-color: rgb(255 255 255);
+    border-radius: 9999px;
+    flex-shrink: 0;
+    animation: wooship-spin 0.8s linear infinite;
+  }
+
+  .wooship-exporting {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgb(17 24 39 / 0.32);
+  }
+
+  .wooship-export-progress {
+    animation: wooship-progress 1.2s ease-in-out infinite;
+  }
+
+  .wooship-download-bar {
+    animation: wooship-fade-in 320ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wooship-download-bar,
+    .wooship-export-progress,
+    .wooship-spinner,
+    .wooship-skeleton-card,
+    .wooship-skeleton-line::after {
+      animation: none !important;
+    }
+  }
+}

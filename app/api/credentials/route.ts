@@ -13,7 +13,11 @@ import type { WooCredentials } from "@/types";
 export async function GET() {
   if (isCredentialsFromEnvironment()) {
     const storeUrl = process.env.WOOCOMMERCE_STORE_URL!;
-    return NextResponse.json({ hasCredentials: true, storeUrl });
+    return NextResponse.json({
+      hasCredentials: true,
+      storeUrl,
+      credentialsSource: "environment",
+    });
   }
 
   try {
@@ -21,9 +25,18 @@ export async function GET() {
     const exists = await loadCredentials(mode);
     if (exists) {
       const storeUrl = await getStoredStoreUrl(mode);
-      return NextResponse.json({ hasCredentials: true, storeUrl });
+      return NextResponse.json({
+        hasCredentials: true,
+        storeUrl,
+        storageMode: mode,
+        credentialsSource: mode,
+      });
     }
-    return NextResponse.json({ hasCredentials: false, storageMode: mode });
+    return NextResponse.json({
+      hasCredentials: false,
+      storageMode: mode,
+      credentialsSource: null,
+    });
   } catch (err) {
     console.error("Error loading credentials:", err);
     return NextResponse.json(

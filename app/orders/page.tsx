@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import FilterPanel from "@/components/FilterPanel";
@@ -26,6 +26,7 @@ function getWarnings(orders: WooOrder[]) {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const [orders, setOrders] = useState<WooOrder[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
@@ -121,19 +122,62 @@ export default function OrdersPage() {
     return result;
   }, [orders, statusFilter, dateFrom, dateTo]);
 
+  const visibleOrderIds = useMemo(
+    () => filteredOrders.map((order) => order.id),
+    [filteredOrders]
+  );
+
+  const visibleSelectedCount = useMemo(
+    () => visibleOrderIds.filter((id) => selectedIds.has(id)).length,
+    [visibleOrderIds, selectedIds]
+  );
+
+  const totalSelectedCount = selectedIds.size;
+  const hiddenSelectedCount = Math.max(0, totalSelectedCount - visibleSelectedCount);
+  const allVisibleSelected =
+    visibleOrderIds.length > 0 && visibleSelectedCount === visibleOrderIds.length;
+  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = someVisibleSelected;
+    }
+  }, [someVisibleSelected]);
+
   function toggleOrder(id: number) {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function toggleAll() {
-    if (selectedIds.size === filteredOrders.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredOrders.map((o) => o.id)));
-    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const shouldDeselectVisible = visibleOrderIds.every((id) => next.has(id));
+
+      if (shouldDeselectVisible) {
+        visibleOrderIds.forEach((id) => next.delete(id));
+      } else {
+        visibleOrderIds.forEach((id) => next.add(id));
+      }
+
+      return next;
+    });
+  }
+
+  function keepOnlyVisibleSelection() {
+    setSelectedIds((prev) => {
+      const next = new Set<number>();
+      visibleOrderIds.forEach((id) => {
+        if (prev.has(id)) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
   }
 
   function formatDate(isoDate: string) {
@@ -233,9 +277,10 @@ export default function OrdersPage() {
           <button
             onClick={fetchOrders}
             disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Caricamento in corso..." : "Aggiorna Ordini"}
+            {isLoading && <span className="wooship-spinner" aria-hidden="true"></span>}
+            <span>{isLoading ? "Caricamento in corso..." : "Aggiorna Ordini"}</span>
           </button>
         </div>
 
@@ -248,9 +293,17 @@ export default function OrdersPage() {
 
         {/* Loading skeleton */}
         {isLoading && (
-          <div className="space-y-4 mb-6">
+          <div className="space-y-3 mb-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div
+                key={i}
+                className="wooship-skeleton-card"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <div className="wooship-skeleton-line w-40"></div>
+                <div className="wooship-skeleton-line w-28"></div>
+                <div className="wooship-skeleton-line w-56 hidden sm:block"></div>
+              </div>
             ))}
           </div>
         )}
@@ -293,14 +346,30 @@ export default function OrdersPage() {
         {/* Order Table */}
         {!isLoading && filteredOrders.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-3 text-xs">
+              <span className="text-gray-600">
+                Selezionati: <strong>{visibleSelectedCount}</strong> visibili su <strong>{totalSelectedCount}</strong> totali
+              </span>
+              {hiddenSelectedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={keepOnlyVisibleSelection}
+                  className="text-blue-700 hover:text-blue-800 font-medium"
+                >
+                  Rimuovi {hiddenSelectedCount} fuori filtro
+                </button>
+              )}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 text-left">
                       <input
+                        ref={headerCheckboxRef}
                         type="checkbox"
-                        checked={selectedIds.size === filteredOrders.length}
+                        aria-label="Seleziona o deseleziona tutti gli ordini visibili"
+                        checked={allVisibleSelected}
                         onChange={toggleAll}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
@@ -404,25 +473,40 @@ export default function OrdersPage() {
         )}
 
         {/* Download bar */}
-        {selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-4xl bg-white/80 backdrop-blur-md border border-gray-200/50 p-4 rounded-2xl shadow-2xl z-50 transition-all animate-in slide-in-from-bottom-5 duration-300">
+        {totalSelectedCount > 0 && (
+          <div className="wooship-download-bar fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-4xl bg-white/80 backdrop-blur-md border border-gray-200/50 p-4 rounded-2xl shadow-2xl z-50 transition-all duration-300">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center bg-blue-100 text-blue-700 font-bold w-8 h-8 rounded-full">
-                  {selectedIds.size}
+                  {totalSelectedCount}
                 </div>
-                <p className="text-sm font-medium text-gray-700">
-                  ordin{selectedIds.size !== 1 ? "i" : "e"} selezionat{selectedIds.size !== 1 ? "i" : "o"}
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">
+                    ordin{totalSelectedCount !== 1 ? "i" : "e"} selezionat{totalSelectedCount !== 1 ? "i" : "o"}
+                  </p>
+                  {hiddenSelectedCount > 0 && (
+                    <p className="text-xs text-amber-700">
+                      {hiddenSelectedCount} non visibil{hiddenSelectedCount !== 1 ? "i" : "e"} con i filtri attivi
+                    </p>
+                  )}
+                </div>
               </div>
               <button
                 onClick={handleDownload}
                 disabled={isExporting}
-                className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+                className={`min-w-[190px] inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-md ${isExporting ? "wooship-exporting" : ""}`}
               >
-                {isExporting ? "Generazione in corso..." : "Scarica CSV"}
+                {isExporting && <span className="wooship-spinner" aria-hidden="true"></span>}
+                <span>{isExporting ? "Preparazione CSV..." : "Scarica CSV"}</span>
               </button>
             </div>
+            {isExporting && (
+              <div className="mt-3 px-2">
+                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="wooship-export-progress h-full w-1/3 bg-gray-900 rounded-full"></div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

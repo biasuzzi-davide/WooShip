@@ -82,6 +82,9 @@ export async function clearCredentials(mode: StorageMode): Promise<void> {
  * Checks if credentials exist in the cookie.
  */
 export async function hasCredentials(mode?: StorageMode): Promise<boolean> {
+  if (isCredentialsFromEnvironment()) {
+    return true;
+  }
   const cookieStore = await cookies();
   return cookieStore.has(COOKIE_NAME);
 }
