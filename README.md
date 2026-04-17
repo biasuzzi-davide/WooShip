@@ -177,22 +177,11 @@ npm run test      # Vitest (92 test unitari)
 
 ## CI
 
-La repository include 4 workflow GitHub Actions:
+La repository include 3 workflow GitHub Actions:
 
 - `ci.yml` (`.github/workflows/ci.yml`): type-check, lint e test su push/PR verso `main`
 - `codeql.yml` (`.github/workflows/codeql.yml`): scansione statica sicurezza/qualita con CodeQL su push/PR verso `main` + scansione schedulata settimanale
-- `sonarcloud.yml` (`.github/workflows/sonarcloud.yml`): analisi statica SonarCloud su push/PR verso `main`
 - `lighthouse.yml` (`.github/workflows/lighthouse.yml`): audit Lighthouse CI su ogni PR verso `main`
-
-### Setup SonarCloud (una tantum)
-
-1. Crea un progetto su SonarCloud e collega questa repository GitHub.
-2. In GitHub -> Settings -> Secrets and variables -> Actions configura:
-    - **Secret**: `SONAR_TOKEN`
-    - **Variables**: `SONAR_ORGANIZATION`, `SONAR_PROJECT_KEY`
-3. Apri una PR (o fai push su `main`) per avviare la pipeline SonarCloud.
-
-Se mancano secret/variables, il job SonarCloud fallisce con errore esplicito.
 
 ### Lighthouse CI su PR
 
@@ -222,7 +211,6 @@ npx @lhci/cli@0.15.x autorun --config=.lighthouserc.json
 ### Dove leggere i risultati
 
 - **CodeQL**: tab **Security -> Code scanning** su GitHub
-- **SonarCloud**: dashboard progetto SonarCloud e decorazione PR
 - **Lighthouse CI**: artifacts del workflow e report temporaneo pubblico (link nel job)
 
 ## Test
