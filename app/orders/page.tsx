@@ -24,6 +24,9 @@ function getWarnings(orders: WooOrder[]) {
   return w;
 }
 
+const TRUCKPOOLING_DASHBOARD_URL = "https://www.truckpooling.it/it/pro/dashboard?";
+const AUTO_OPEN_DASHBOARD_PREF_KEY = "wooship_auto_open_dashboard_after_export";
+
 export default function OrdersPage() {
   const router = useRouter();
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
@@ -54,6 +57,9 @@ export default function OrdersPage() {
 
   // Order detail modal state
   const [detailOrder, setDetailOrder] = useState<WooOrder | null>(null);
+  const [autoOpenDashboard, setAutoOpenDashboard] = useState(false);
+  const [showPostExportPrompt, setShowPostExportPrompt] = useState(false);
+  const [rememberDashboardPreference, setRememberDashboardPreference] = useState(false);
 
   // Check credentials on mount
   useEffect(() => {
@@ -69,6 +75,16 @@ export default function OrdersPage() {
       .catch(() => router.push("/credentials"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  useEffect(() => {
+    try {
+      setAutoOpenDashboard(
+        window.localStorage.getItem(AUTO_OPEN_DASHBOARD_PREF_KEY) === "true"
+      );
+    } catch {
+      // Ignore localStorage access errors.
+    }
+  }, []);
 
   async function fetchOrders() {
     setIsLoading(true);
@@ -189,6 +205,36 @@ export default function OrdersPage() {
     });
   }
 
+  function persistAutoOpenDashboardPreference(value: boolean) {
+    setAutoOpenDashboard(value);
+    try {
+      window.localStorage.setItem(AUTO_OPEN_DASHBOARD_PREF_KEY, value ? "true" : "false");
+    } catch {
+      // Ignore localStorage access errors.
+    }
+  }
+
+  function openTruckpoolingDashboard() {
+    window.open(
+      TRUCKPOOLING_DASHBOARD_URL,
+      "_blank",
+      "noopener,noreferrer,width=1400,height=900"
+    );
+  }
+
+  function closePostExportPrompt() {
+    setShowPostExportPrompt(false);
+    setRememberDashboardPreference(false);
+  }
+
+  function handleOpenDashboardNow() {
+    if (rememberDashboardPreference) {
+      persistAutoOpenDashboardPreference(true);
+    }
+    openTruckpoolingDashboard();
+    closePostExportPrompt();
+  }
+
   async function handleDownload() {
     const selectedOrders = orders.filter((o) => selectedIds.has(o.id));
     const orderWarnings = getWarnings(selectedOrders);
@@ -253,6 +299,12 @@ export default function OrdersPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      if (autoOpenDashboard) {
+        openTruckpoolingDashboard();
+      } else {
+        setShowPostExportPrompt(true);
+      }
     } catch {
       setError("Errore di rete durante l'esportazione");
     } finally {
@@ -507,9 +559,75 @@ export default function OrdersPage() {
                 </div>
               </div>
             )}
+            <div className="mt-3 px-2 pt-3 border-t border-gray-200/70">
+              <label className="inline-flex items-center gap-2 text-xs text-gray-600 select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoOpenDashboard}
+                  onChange={(e) => persistAutoOpenDashboardPreference(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Apri automaticamente la dashboard Truckpooling dopo ogni export
+              </label>
+            </div>
           </div>
         )}
       </main>
+
+      {/* Post export prompt */}
+      {showPostExportPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <svg
+                  className="w-5 h-5 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <h2 className="text-lg font-semibold text-gray-900">Esportazione completata</h2>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Vuoi aprire la dashboard di Truckpooling in una nuova finestra?
+              </p>
+              <p className="text-xs text-gray-500 mb-4 break-all">
+                {TRUCKPOOLING_DASHBOARD_URL}
+              </p>
+              <label className="inline-flex items-start gap-2 text-sm text-gray-700 select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberDashboardPreference}
+                  onChange={(e) => setRememberDashboardPreference(e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Ricorda la scelta e apri automaticamente dopo ogni export</span>
+              </label>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex gap-3 justify-end">
+              <button
+                onClick={closePostExportPrompt}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Non ora
+              </button>
+              <button
+                onClick={handleOpenDashboardNow}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Apri dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Warning modal */}
       {showWarningModal && (
