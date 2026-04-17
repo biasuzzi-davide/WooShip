@@ -28,26 +28,167 @@ function packageLabel(type: string) {
   return map[type] ?? type;
 }
 
-function packageColor(type: string): { bg: string; border: string; accent: string; icon: string } {
+type IconProps = {
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+};
+
+function SvgIcon({
+  children,
+  size = 18,
+  color = "currentColor",
+  strokeWidth = 1.9,
+}: IconProps & { children: React.ReactNode }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+
+function IconClipboard({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4.5h6a1.5 1.5 0 0 0-1.5-1.5h-3A1.5 1.5 0 0 0 9 4.5Z" />
+      <path d="M9 10h6M9 14h6M9 18h4" />
+    </SvgIcon>
+  );
+}
+
+function IconShoppingBag({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M6.5 8h11l-1 12h-9l-1-12Z" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    </SvgIcon>
+  );
+}
+
+function IconBox({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M21 7.5 12 3 3 7.5m18 0v9L12 21m9-13.5-9 4.5m0 9-9-4.5v-9m9 4.5L3 7.5" />
+    </SvgIcon>
+  );
+}
+
+function IconPallet({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <rect x="4" y="6" width="16" height="10" rx="2" />
+      <path d="M4 16h16M7 16v3m5-3v3m5-3v3" />
+    </SvgIcon>
+  );
+}
+
+function IconBottle({
+  size = 18,
+  color = "currentColor",
+  strokeWidth = 1.9,
+  magnum = false,
+}: IconProps & { magnum?: boolean }) {
+  return magnum ? (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M9 3h6" />
+      <path d="M11 3v3l-2.6 3.7c-.4.6-.6 1.2-.6 1.9V18a3 3 0 0 0 3 3h2.4a3 3 0 0 0 3-3v-6.4c0-.7-.2-1.3-.6-1.9L13 6V3" />
+    </SvgIcon>
+  ) : (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M10 3h4" />
+      <path d="M11 3v3.2l-2 3.2c-.3.5-.5 1.1-.5 1.7V18a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-7a3.5 3.5 0 0 0-.5-1.8L13 6.2V3" />
+    </SvgIcon>
+  );
+}
+
+function IconTruck({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M3 8h11v8H3z" />
+      <path d="M14 11h4l3 3v2h-7z" />
+      <circle cx="7.5" cy="17" r="1.5" />
+      <circle cx="17.5" cy="17" r="1.5" />
+    </SvgIcon>
+  );
+}
+
+function IconReceipt({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M7 3h10a1 1 0 0 1 1 1v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5V4a1 1 0 0 1 1-1Z" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </SvgIcon>
+  );
+}
+
+function IconBanknotes({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <rect x="3" y="7" width="18" height="10" rx="2" />
+      <circle cx="12" cy="12" r="2.1" />
+      <path d="M3 10c1.2 0 2.2-1 2.2-2.2M21 10c-1.2 0-2.2-1-2.2-2.2M3 14c1.2 0 2.2 1 2.2 2.2M21 14c-1.2 0-2.2 1-2.2 2.2" />
+    </SvgIcon>
+  );
+}
+
+function IconMessage({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+      <circle cx="10" cy="11.5" r="0.7" fill={color} stroke="none" />
+      <circle cx="12" cy="11.5" r="0.7" fill={color} stroke="none" />
+      <circle cx="14" cy="11.5" r="0.7" fill={color} stroke="none" />
+    </SvgIcon>
+  );
+}
+
+function IconWarning({ size = 18, color = "currentColor", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} color={color} strokeWidth={strokeWidth}>
+      <path d="M12 4 20 18H4L12 4Z" />
+      <path d="M12 10v4" />
+      <circle cx="12" cy="16.5" r="0.8" fill={color} stroke="none" />
+    </SvgIcon>
+  );
+}
+
+function packageColor(type: string): {
+  bg: string;
+  border: string;
+  accent: string;
+  icon: React.ReactNode;
+} {
   if (type.startsWith("PALLET"))
     return {
       bg: "rgba(124,58,237,0.08)",
       border: "rgba(124,58,237,0.25)",
       accent: "#7c3aed",
-      icon: "🏗️",
+      icon: <IconPallet size={22} color="#7c3aed" />,
     };
   if (type === "COLLO-MAGNUM")
     return {
       bg: "rgba(220,38,38,0.07)",
       border: "rgba(220,38,38,0.22)",
       accent: "#dc2626",
-      icon: "🍾",
+      icon: <IconBottle size={22} color="#dc2626" magnum />,
     };
   return {
     bg: "rgba(37,99,235,0.07)",
     border: "rgba(37,99,235,0.22)",
     accent: "#2563eb",
-    icon: "📦",
+    icon: <IconBox size={22} color="#2563eb" />,
   };
 }
 
@@ -71,7 +212,18 @@ function PackageCard({ pkg, index }: { pkg: PackageInfo; index: number }) {
     >
       {/* header row */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 22 }}>{icon}</span>
+        <span
+          style={{
+            width: 24,
+            height: 24,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: accent }}>
             {packageLabel(pkg.type)}
@@ -139,7 +291,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({
+  icon,
+  children,
+}: {
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div
       style={{
@@ -154,6 +312,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
         gap: 6,
       }}
     >
+      {icon && (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 14,
+            height: 14,
+            color: "#6b7280",
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </span>
+      )}
       {children}
     </div>
   );
@@ -253,10 +426,9 @@ export default function OrderDetailModal({ order, onClose }: Props) {
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              fontSize: 20,
             }}
           >
-            📋
+            <IconClipboard size={22} color="#ffffff" strokeWidth={2} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>
@@ -328,7 +500,7 @@ export default function OrderDetailModal({ order, onClose }: Props) {
 
           {/* ── Products ── */}
           <section>
-            <SectionTitle>🛍️ Prodotti ordinati</SectionTitle>
+            <SectionTitle icon={<IconShoppingBag size={14} />}>Prodotti ordinati</SectionTitle>
             <div
               style={{
                 background: "#f9fafb",
@@ -351,8 +523,21 @@ export default function OrderDetailModal({ order, onClose }: Props) {
                       background: i % 2 === 1 ? "rgba(243,244,246,0.5)" : "transparent",
                     }}
                   >
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>
-                      {isMagnum ? "🍾" : "🍷"}
+                    <span
+                      style={{
+                        width: 20,
+                        height: 20,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isMagnum ? (
+                        <IconBottle size={18} color="#b91c1c" magnum />
+                      ) : (
+                        <IconBottle size={17} color="#1d4ed8" />
+                      )}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
@@ -412,9 +597,13 @@ export default function OrderDetailModal({ order, onClose }: Props) {
                     fontSize: 12,
                     fontWeight: 600,
                     color: "#1d4ed8",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  🍷 {packaging.qty075} bott. 0.75 L
+                  <IconBottle size={14} color="#1d4ed8" />
+                  {packaging.qty075} bott. 0.75 L
                 </div>
               )}
               {packaging.qtyMagnum > 0 && (
@@ -427,9 +616,13 @@ export default function OrderDetailModal({ order, onClose }: Props) {
                     fontSize: 12,
                     fontWeight: 600,
                     color: "#dc2626",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  🍾 {packaging.qtyMagnum} Magnum
+                  <IconBottle size={14} color="#dc2626" magnum />
+                  {packaging.qtyMagnum} Magnum
                 </div>
               )}
               <div
@@ -450,8 +643,8 @@ export default function OrderDetailModal({ order, onClose }: Props) {
 
           {/* ── Packaging breakdown ── */}
           <section>
-            <SectionTitle>
-              📦 Composizione imballo
+            <SectionTitle icon={<IconBox size={14} />}>
+              Composizione imballo
               <span
                 style={{
                   marginLeft: "auto",
@@ -465,7 +658,9 @@ export default function OrderDetailModal({ order, onClose }: Props) {
                   letterSpacing: 0,
                 }}
               >
-                {packaging.packages.length} collo{packaging.packages.length !== 1 ? "i" : ""} · {totalWeight.toFixed(1)} kg tot.
+                {packaging.packages.length === 1
+                  ? "1 collo"
+                  : `${packaging.packages.length} colli`} · {totalWeight.toFixed(1)} kg tot.
               </span>
             </SectionTitle>
 
@@ -473,12 +668,11 @@ export default function OrderDetailModal({ order, onClose }: Props) {
             <ModeExplainer mode={packaging.mode} count={packaging.packages.length} />
 
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: packaging.packages.length === 1 ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))",
-                gap: 10,
-                marginTop: 10,
-              }}
+              className={
+                packaging.packages.length === 1
+                  ? "packages-grid packages-grid-single"
+                  : "packages-grid"
+              }
             >
               {packaging.packages.map((pkg, i) => (
                 <PackageCard key={i} pkg={pkg} index={i} />
@@ -489,7 +683,7 @@ export default function OrderDetailModal({ order, onClose }: Props) {
           {/* ── Shipping & Billing ── */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <section>
-              <SectionTitle>🚚 Spedizione</SectionTitle>
+              <SectionTitle icon={<IconTruck size={14} />}>Spedizione</SectionTitle>
               <div
                 style={{
                   background: "#f9fafb",
@@ -522,7 +716,7 @@ export default function OrderDetailModal({ order, onClose }: Props) {
             </section>
 
             <section>
-              <SectionTitle>🧾 Fatturazione</SectionTitle>
+              <SectionTitle icon={<IconReceipt size={14} />}>Fatturazione</SectionTitle>
               <div
                 style={{
                   background: "#f9fafb",
@@ -558,7 +752,9 @@ export default function OrderDetailModal({ order, onClose }: Props) {
           {/* ── COD detail ── */}
           {isCOD && (
             <section>
-              <SectionTitle>💜 Contrassegno (COD)</SectionTitle>
+              <SectionTitle icon={<IconBanknotes size={14} color="#7c3aed" />}>
+                Contrassegno (COD)
+              </SectionTitle>
               <div
                 style={{
                   background: "rgba(124,58,237,0.05)",
@@ -584,7 +780,7 @@ export default function OrderDetailModal({ order, onClose }: Props) {
           {/* ── Note ── */}
           {order.customer_note && (
             <section>
-              <SectionTitle>💬 Note cliente</SectionTitle>
+              <SectionTitle icon={<IconMessage size={14} />}>Note cliente</SectionTitle>
               <div
                 style={{
                   background: "#fffbeb",
@@ -636,6 +832,23 @@ export default function OrderDetailModal({ order, onClose }: Props) {
           from { opacity: 0; transform: translate(-50%, calc(-50% + 20px)) scale(0.97); }
           to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         }
+
+        .packages-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          margin-top: 10px;
+        }
+
+        .packages-grid-single {
+          grid-template-columns: 1fr;
+        }
+
+        @media (max-width: 720px) {
+          .packages-grid {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
     </>
   );
@@ -650,9 +863,19 @@ function ModeExplainer({
   mode: "pallet-alto" | "pallet-basso" | "colli" | "empty";
   count: number;
 }) {
-  const configs = {
+  const configs: Record<
+    "pallet-alto" | "pallet-basso" | "colli" | "empty",
+    {
+      icon: React.ReactNode;
+      color: string;
+      bg: string;
+      border: string;
+      title: string;
+      desc: string;
+    }
+  > = {
     "pallet-alto": {
-      icon: "🏗️",
+      icon: <IconPallet size={18} color="#7c3aed" />,
       color: "#7c3aed",
       bg: "rgba(124,58,237,0.06)",
       border: "rgba(124,58,237,0.2)",
@@ -660,7 +883,7 @@ function ModeExplainer({
       desc: "Più di 48 bottiglie → spedizione su pallet alto (75 cm)",
     },
     "pallet-basso": {
-      icon: "🏗️",
+      icon: <IconPallet size={18} color="#7c3aed" />,
       color: "#7c3aed",
       bg: "rgba(124,58,237,0.06)",
       border: "rgba(124,58,237,0.2)",
@@ -668,15 +891,15 @@ function ModeExplainer({
       desc: "37–48 bottiglie → spedizione su pallet basso (45 cm)",
     },
     colli: {
-      icon: "📦",
+      icon: <IconBox size={18} color="#2563eb" />,
       color: "#2563eb",
       bg: "rgba(37,99,235,0.06)",
       border: "rgba(37,99,235,0.2)",
-      title: `${count} collo${count !== 1 ? "i" : ""} separato${count !== 1 ? "i" : ""}`,
+      title: count === 1 ? "1 collo separato" : `${count} colli separati`,
       desc: "Fino a 36 bottiglie → spedizione in colli individuali",
     },
     empty: {
-      icon: "⚠️",
+      icon: <IconWarning size={18} color="#d97706" />,
       color: "#d97706",
       bg: "rgba(217,119,6,0.06)",
       border: "rgba(217,119,6,0.2)",
@@ -700,7 +923,18 @@ function ModeExplainer({
         fontSize: 13,
       }}
     >
-      <span style={{ fontSize: 18 }}>{cfg.icon}</span>
+      <span
+        style={{
+          width: 20,
+          height: 20,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {cfg.icon}
+      </span>
       <div>
         <span style={{ fontWeight: 700, color: cfg.color }}>{cfg.title}</span>
         <span style={{ color: "#6b7280", marginLeft: 6 }}>— {cfg.desc}</span>
