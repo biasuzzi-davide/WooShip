@@ -7,7 +7,7 @@ import FilterPanel from "@/components/FilterPanel";
 import CSVOptions from "@/components/CSVOptions";
 import WarningSummary from "@/components/WarningSummary";
 import OrderDetailModal from "@/components/OrderDetailModal";
-import type { WooOrder, PackageType, CodType } from "@/types";
+import type { WooOrder, CodType } from "@/types";
 
 // Inline warning check (avoiding server-side lib imports in client component)
 function getWarnings(orders: WooOrder[]) {
@@ -44,7 +44,7 @@ export default function OrdersPage() {
   const [dateTo, setDateTo] = useState("");
 
   // CSV options
-  const [packageType, setPackageType] = useState<PackageType>("Pacco");
+  const [includeCod, setIncludeCod] = useState(false);
   const [codType, setCodType] = useState<CodType>("A");
   const [carrier, setCarrier] = useState("");
   const [service, setService] = useState("");
@@ -270,7 +270,8 @@ export default function OrdersPage() {
           fetchedOrderIds,
           exportToken,
           options: {
-            defaultPackageType: packageType,
+            defaultPackageType: "Pacco",
+            includeCod,
             codType,
             carrier,
             service,
@@ -378,13 +379,13 @@ export default function OrdersPage() {
             {/* CSV Options */}
             <div className="mb-4">
               <CSVOptions
-                defaultPackageType={packageType}
+                includeCod={includeCod}
                 codType={codType}
                 carrier={carrier}
                 service={service}
                 pickupDate={pickupDate}
                 showWarnings={showWarnings}
-                onPackageTypeChange={setPackageType}
+                onIncludeCodChange={setIncludeCod}
                 onCodTypeChange={setCodType}
                 onCarrierChange={setCarrier}
                 onServiceChange={setService}

@@ -229,4 +229,29 @@ describe("generateCSV packaging logic", () => {
     expect(row2[35]).toBe(""); 
     expect(row2[36]).toBe(""); 
   });
+
+  it("can skip COD fields when includeCod is disabled", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      payment_method: "cod",
+      total: "50.00",
+      line_items: [makeItem("Prosecco DOC", 7)] // generates 2 rows
+    })], {
+      defaultPackageType: "Pacco",
+      codType: "A",
+      includeCod: false,
+    });
+
+    const lines = csv.split("\n");
+    expect(lines.length).toBe(3);
+
+    const row1 = lines[1].split(";");
+    const row2 = lines[2].split(";");
+
+    expect(row1[35]).toBe("");
+    expect(row1[36]).toBe("");
+    expect(row1[37]).toBe("");
+    expect(row1[40]).toBe("");
+    expect(row2[35]).toBe("");
+    expect(row2[36]).toBe("");
+  });
 });

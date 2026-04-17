@@ -21,6 +21,7 @@ export interface CSVOptions {
   carrier?: string;
   service?: string;
   codType: CodType;
+  includeCod?: boolean;
 }
 
 // Warning Summary

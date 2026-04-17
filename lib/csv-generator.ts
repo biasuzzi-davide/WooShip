@@ -110,6 +110,7 @@ function orderToRows(
   options: CSVOptions
 ): string[][] {
   const isCOD = order.payment_method === "cod";
+  const shouldIncludeCOD = (options.includeCod ?? true) && isCOD;
   const billing = order.billing;
   const shipping = order.shipping;
   const sender = getSenderProfileFromEnv();
@@ -124,15 +125,15 @@ function orderToRows(
     const pkg = packages[i];
     
     // COD is assigned only to the first package
-    const codType = isCOD && i === 0 ? options.codType : "";
-    const codValue = isCOD && i === 0 ? order.total : "";
-    const codHolder = isCOD && i === 0
+    const codType = shouldIncludeCOD && i === 0 ? options.codType : "";
+    const codValue = shouldIncludeCOD && i === 0 ? order.total : "";
+    const codHolder = shouldIncludeCOD && i === 0
       ? [billing.first_name, billing.last_name].filter(Boolean).join(" ")
       : "";
-    const codIban = isCOD && i === 0 ? "" : ""; // WooCommerce doesn't store IBAN by default
-    const codHolderLocality = isCOD && i === 0 ? (billing.city ?? "") : "";
-    const codHolderIso2 = isCOD && i === 0 ? (billing.country ?? "") : "";
-    const codHolderTaxCode = isCOD && i === 0 ? (billing.tax_id ?? "") : "";
+    const codIban = shouldIncludeCOD && i === 0 ? "" : ""; // WooCommerce doesn't store IBAN by default
+    const codHolderLocality = shouldIncludeCOD && i === 0 ? (billing.city ?? "") : "";
+    const codHolderIso2 = shouldIncludeCOD && i === 0 ? (billing.country ?? "") : "";
+    const codHolderTaxCode = shouldIncludeCOD && i === 0 ? (billing.tax_id ?? "") : "";
 
     const row: string[] = [
       // 1-10
