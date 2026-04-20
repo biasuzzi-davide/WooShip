@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { WooOrder } from "@/types";
 import { getPackagingForOrder, type PackageInfo } from "@/lib/packaging";
 
@@ -345,21 +345,63 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 // ─── main modal ───────────────────────────────────────────────────────────────
 
 export default function OrderDetailModal({ order, onClose }: Props) {
+  const dialogId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const packaging = getPackagingForOrder(order);
   const isCOD = order.payment_method === "cod";
 
-  // close on Escape
-  const handleKey = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    },
-    [onClose],
-  );
-
   useEffect(() => {
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [handleKey]);
+    const root = dialogRef.current;
+    if (!root) return;
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
+    const getFocusable = () =>
+      root.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+
+    const initial = getFocusable()[0] ?? root;
+    initial.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        root.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [onClose]);
 
   // prevent body scroll while open
   useEffect(() => {
@@ -388,6 +430,11 @@ export default function OrderDetailModal({ order, onClose }: Props) {
 
       {/* Panel */}
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={dialogId}
+        tabIndex={-1}
         style={{
           position: "fixed",
           top: "50%",
@@ -431,9 +478,9 @@ export default function OrderDetailModal({ order, onClose }: Props) {
             <IconClipboard size={22} color="#ffffff" strokeWidth={2} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>
+            <h2 id={dialogId} style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>
               Ordine #{order.number}
-            </div>
+            </h2>
             <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
               {order.billing.first_name} {order.billing.last_name} ·{" "}
               {new Date(order.date_created).toLocaleDateString("it-IT", {

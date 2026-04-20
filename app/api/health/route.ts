@@ -16,20 +16,24 @@ export async function GET() {
   }
 
   try {
-    const storageMode = await detectStorageMode();
+    const persistedStorageMode = await detectStorageMode();
+    const storageMode = isCredentialsFromEnvironment()
+      ? "environment"
+      : persistedStorageMode;
     let storeUrl: string | undefined;
 
-    if (isCredentialsFromEnvironment()) {
+    if (storageMode === "environment") {
       storeUrl = process.env.WOOCOMMERCE_STORE_URL;
-    } else if (storageMode === "filesystem") {
-      storeUrl = await getStoredStoreUrl(storageMode) ?? undefined;
+    } else {
+      storeUrl = await getStoredStoreUrl(persistedStorageMode) ?? undefined;
     }
 
     return NextResponse.json({ keyValid: true, storageMode, storeUrl });
   } catch (err) {
+    console.error("Error checking health status:", err);
     return NextResponse.json(
-      { keyValid: true, error: (err as Error).message },
-      { status: 200 }
+      { keyValid: true, error: "Impossibile verificare lo stato credenziali." },
+      { status: 500 }
     );
   }
 }

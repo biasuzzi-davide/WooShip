@@ -7,67 +7,38 @@ import {
   loadCredentials,
 } from "@/lib/credentials";
 import { requireSameOrigin } from "@/lib/security";
-import { WooApiError, type WooCredentials } from "@/types";
+import { wooCredentialsSchema } from "@/lib/api-validation";
+import { normalizeApiError } from "@/lib/api-errors";
 
-function normalizeStoreUrl(url: string): string {
-  const trimmed = url.trim();
-  if (!trimmed) return "";
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  return withProtocol.replace(/\/$/, "");
-}
-
-function hasAnyProvidedCredentialField(body: Partial<WooCredentials>): boolean {
-  return Boolean(body.storeUrl || body.consumerKey || body.consumerSecret);
-}
-
-function hasAllProvidedCredentials(
-  body: Partial<WooCredentials>
-): body is WooCredentials {
-  return Boolean(
-    typeof body.storeUrl === "string" &&
-      body.storeUrl.trim() &&
-      typeof body.consumerKey === "string" &&
-      body.consumerKey.trim() &&
-      typeof body.consumerSecret === "string" &&
-      body.consumerSecret.trim()
-  );
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function POST(req: NextRequest) {
   const originError = requireSameOrigin(req);
   if (originError) return originError;
 
-  let body: Partial<WooCredentials> = {};
+  let body: unknown = {};
   try {
-    body = (await req.json()) as Partial<WooCredentials>;
+    body = await req.json();
   } catch {
     body = {};
   }
 
-  if (hasAnyProvidedCredentialField(body) && !hasAllProvidedCredentials(body)) {
-    return NextResponse.json(
-      {
-        error:
-          "Per testare i valori inseriti servono storeUrl, consumerKey e consumerSecret completi.",
-      },
-      { status: 400 }
-    );
-  }
-
-  let creds: WooCredentials | null = null;
+  let creds: ReturnType<typeof wooCredentialsSchema.parse> | null = null;
   let source: "manual" | "environment" | "cookie" = "cookie";
 
-  if (hasAllProvidedCredentials(body)) {
-    creds = {
-      storeUrl: normalizeStoreUrl(body.storeUrl),
-      consumerKey: body.consumerKey.trim(),
-      consumerSecret: body.consumerSecret.trim(),
-    };
+  const manualParse = wooCredentialsSchema.safeParse(body);
+  if (manualParse.success) {
+    creds = manualParse.data;
     source = "manual";
+  } else if (isPlainObject(body) && Object.keys(body).length > 0) {
+    const message = manualParse.error.issues[0]?.message ??
+      "Per il test manuale servono storeUrl, consumerKey e consumerSecret validi.";
+
+    return NextResponse.json({ error: message }, { status: 400 });
   } else if (isCredentialsFromEnvironment()) {
-    creds = getCredentialsFromEnvironment();
+    creds = getCredentialsFromEnvironment()!;
     source = "environment";
   } else {
     const mode = await detectStorageMode();
@@ -100,17 +71,14 @@ export async function POST(req: NextRequest) {
       storeUrl: creds.storeUrl,
     });
   } catch (err) {
-    if (err instanceof WooApiError) {
-      return NextResponse.json(
-        { error: err.message },
-        { status: err.statusCode ?? 502 }
-      );
+    const normalized = normalizeApiError(
+      err,
+      "Connessione fallita. Verifica URL e credenziali."
+    );
+    if (normalized.shouldLog) {
+      console.error("Error testing WooCommerce connection:", err);
     }
 
-    console.error("Error testing WooCommerce connection:", err);
-    return NextResponse.json(
-      { error: "Connessione fallita. Verifica URL e credenziali." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
   }
 }

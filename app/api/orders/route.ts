@@ -1,64 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { WooClient } from "@/lib/woocommerce";
+import { createWooClient } from "@/lib/woocommerce";
 import { getKey } from "@/lib/crypto";
-import {
-  isCredentialsFromEnvironment,
-  getCredentialsFromEnvironment,
-  detectStorageMode,
-  loadCredentials,
-} from "@/lib/credentials";
-
-async function getClient(): Promise<WooClient> {
-  if (isCredentialsFromEnvironment()) {
-    const creds = getCredentialsFromEnvironment()!;
-    return new WooClient(creds);
-  }
-  const mode = await detectStorageMode();
-  const creds = await loadCredentials(mode);
-  if (!creds) {
-    throw new Error("No credentials");
-  }
-  return new WooClient(creds);
-}
+import { ordersQuerySchema } from "@/lib/api-validation";
+import { normalizeApiError } from "@/lib/api-errors";
 
 export async function GET(req: NextRequest) {
   try {
     const hmacKey = getKey();
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") ?? undefined;
-    const after = searchParams.get("after") ?? undefined;
-    const before = searchParams.get("before") ?? undefined;
-    const per_page = parseInt(searchParams.get("per_page") ?? "100");
-    const page = searchParams.has("page")
-      ? parseInt(searchParams.get("page")!)
-      : undefined;
+    const query = ordersQuerySchema.parse({
+      status: searchParams.get("status"),
+      after: searchParams.get("after"),
+      before: searchParams.get("before"),
+      per_page: searchParams.get("per_page"),
+      page: searchParams.get("page"),
+    });
 
-    const client = await getClient();
-    const orders = await client.getOrders({ status, after, before, per_page, page });
+    const client = await createWooClient();
+    const result = await client.getOrders(query);
 
     // Generate HMAC-SHA256 export token from sorted order IDs
-    const fetchedOrderIds = orders.map((o) => o.id).sort((a, b) => a - b);
+    const fetchedOrderIds = result.orders.map((o) => o.id).sort((a, b) => a - b);
     const exportToken = crypto
       .createHmac("sha256", hmacKey)
       .update(JSON.stringify(fetchedOrderIds))
       .digest("hex");
 
     return NextResponse.json({
-      orders,
-      total: fetchedOrderIds.length,
-      pages: 1,
+      orders: result.orders,
+      total: result.total,
+      pages: result.pages,
+      page: result.page,
+      perPage: result.perPage,
       exportToken,
       fetchedOrderIds,
     });
   } catch (err) {
-    if ((err as Error).message === "No credentials") {
-      return NextResponse.json({ error: "No credentials configured" }, { status: 401 });
-    }
-    console.error("Error fetching orders:", err);
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 500 }
+    const normalized = normalizeApiError(
+      err,
+      "Impossibile recuperare gli ordini."
     );
+    if (normalized.shouldLog) {
+      console.error("Error fetching orders:", err);
+    }
+
+    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
   }
 }

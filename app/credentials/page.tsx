@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const formatStoreUrl = (url: string) => {
   let formatted = url.trim();
@@ -12,6 +13,7 @@ const formatStoreUrl = (url: string) => {
 };
 
 export default function CredentialsPage() {
+  const router = useRouter();
   const [storeUrl, setStoreUrl] = useState("");
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
@@ -106,7 +108,7 @@ export default function CredentialsPage() {
 
       // Redirect after delay
       setTimeout(() => {
-        window.location.href = "/orders";
+        router.replace("/orders");
       }, 1500);
     } catch {
       setError("Errore di rete. Riprova per favore.");

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const encoder = new TextEncoder();
+
 function unauthorized(): NextResponse {
   return new NextResponse("Authentication required", {
     status: 401,
@@ -27,6 +29,19 @@ function decodeBasicAuthHeader(headerValue: string): { user: string; pass: strin
   }
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+  const maxLen = Math.max(aBytes.length, bBytes.length);
+
+  let mismatch = aBytes.length ^ bBytes.length;
+  for (let i = 0; i < maxLen; i++) {
+    mismatch |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
+  }
+
+  return mismatch === 0;
+}
+
 export function middleware(req: NextRequest) {
   const username = process.env.APP_BASIC_AUTH_USER;
   const password = process.env.APP_BASIC_AUTH_PASSWORD;
@@ -48,7 +63,10 @@ export function middleware(req: NextRequest) {
   const parsed = decodeBasicAuthHeader(authHeader);
   if (!parsed) return unauthorized();
 
-  if (parsed.user !== username || parsed.pass !== password) {
+  const userMatch = timingSafeEqual(parsed.user, username);
+  const passMatch = timingSafeEqual(parsed.pass, password);
+
+  if (!userMatch || !passMatch) {
     return unauthorized();
   }
 

@@ -1,66 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { WooClient } from "@/lib/woocommerce";
+import { createWooClient } from "@/lib/woocommerce";
 import { generateCSV } from "@/lib/csv-generator";
 import { getKey } from "@/lib/crypto";
 import { requireSameOrigin } from "@/lib/security";
-import {
-  isCredentialsFromEnvironment,
-  getCredentialsFromEnvironment,
-  detectStorageMode,
-  loadCredentials,
-} from "@/lib/credentials";
-import type { CSVOptions } from "@/types";
-
-async function getClient(): Promise<WooClient> {
-  if (isCredentialsFromEnvironment()) {
-    return new WooClient(getCredentialsFromEnvironment()!);
-  }
-  const mode = await detectStorageMode();
-  const creds = await loadCredentials(mode);
-  if (!creds) throw new Error("No credentials");
-  return new WooClient(creds);
-}
+import { normalizeApiError } from "@/lib/api-errors";
+import { ordersExportBodySchema } from "@/lib/api-validation";
 
 export async function POST(req: NextRequest) {
   const originError = requireSameOrigin(req);
   if (originError) return originError;
 
   try {
-    const body = await req.json() as {
-      orderIds: number[];
-      fetchedOrderIds: number[];
-      exportToken: string;
-      options: CSVOptions;
-    };
+    const body = ordersExportBodySchema.parse(await req.json());
     const { orderIds, fetchedOrderIds, exportToken, options } = body;
-
-    if (
-      !Array.isArray(orderIds) ||
-      !orderIds.every((id) => Number.isInteger(id) && id > 0)
-    ) {
-      return NextResponse.json(
-        { error: "orderIds must be an array of positive integers" },
-        { status: 400 }
-      );
-    }
-
-    if (
-      !Array.isArray(fetchedOrderIds) ||
-      !fetchedOrderIds.every((id) => Number.isInteger(id) && id > 0)
-    ) {
-      return NextResponse.json(
-        { error: "fetchedOrderIds must be an array of positive integers" },
-        { status: 400 }
-      );
-    }
-
-    if (typeof exportToken !== "string" || exportToken.length === 0) {
-      return NextResponse.json(
-        { error: "exportToken is required" },
-        { status: 400 }
-      );
-    }
 
     const uniqueOrderIds = [...new Set(orderIds)].sort((a, b) => a - b);
     const uniqueFetchedOrderIds = [...new Set(fetchedOrderIds)].sort((a, b) => a - b);
@@ -107,7 +60,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = await getClient();
+    const client = await createWooClient();
     const selectedOrders = await client.getOrdersByIds(uniqueOrderIds);
 
     if (selectedOrders.length !== uniqueOrderIds.length) {
@@ -128,10 +81,14 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("Error exporting CSV:", err);
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 500 }
+    const normalized = normalizeApiError(
+      err,
+      "Impossibile esportare il CSV."
     );
+    if (normalized.shouldLog) {
+      console.error("Error exporting CSV:", err);
+    }
+
+    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
   }
 }

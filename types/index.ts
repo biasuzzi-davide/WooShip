@@ -31,8 +31,8 @@ export interface WarningSummary {
   missingFields: string[];
 }
 
-// Storage Mode (two-tier strategy)
-export type StorageMode = "filesystem" | "cookie";
+// Storage Mode for persisted credentials
+export type StorageMode = "cookie";
 
 // API Error
 export class WooApiError extends Error {

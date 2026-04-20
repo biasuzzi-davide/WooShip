@@ -48,3 +48,4 @@ coverage/
 next-env.d.ts
 *.txt
 prd.json
+*o.md

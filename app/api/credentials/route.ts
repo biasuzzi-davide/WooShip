@@ -8,7 +8,8 @@ import {
   isCredentialsFromEnvironment,
 } from "@/lib/credentials";
 import { requireSameOrigin } from "@/lib/security";
-import type { WooCredentials } from "@/types";
+import { normalizeApiError } from "@/lib/api-errors";
+import { wooCredentialsSchema } from "@/lib/api-validation";
 
 export async function GET() {
   if (isCredentialsFromEnvironment()) {
@@ -60,22 +61,20 @@ export async function POST(req: NextRequest) {
   const mode = await detectStorageMode();
 
   try {
-    const body = await req.json() as Partial<WooCredentials>;
+    const body = wooCredentialsSchema.parse(await req.json());
     const { storeUrl, consumerKey, consumerSecret } = body;
-
-    if (!storeUrl || !consumerKey || !consumerSecret) {
-      return NextResponse.json(
-        { error: "storeUrl, consumerKey, and consumerSecret are required" },
-        { status: 400 }
-      );
-    }
 
     await saveCredentials({ storeUrl, consumerKey, consumerSecret }, mode);
     return NextResponse.json({ success: true, storeUrl });
   } catch (err) {
-    console.error("Error saving credentials:", err);
-    const message = err instanceof Error ? err.message : "Failed to save credentials";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const normalized = normalizeApiError(
+      err,
+      "Impossibile salvare le credenziali."
+    );
+    if (normalized.shouldLog) {
+      console.error("Error saving credentials:", err);
+    }
+    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
   }
 }
 
@@ -96,10 +95,13 @@ export async function DELETE(req: NextRequest) {
     await clearCredentials(mode);
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Error clearing credentials:", err);
-    return NextResponse.json(
-      { error: "Failed to clear credentials" },
-      { status: 500 }
+    const normalized = normalizeApiError(
+      err,
+      "Impossibile rimuovere le credenziali."
     );
+    if (normalized.shouldLog) {
+      console.error("Error clearing credentials:", err);
+    }
+    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
   }
 }

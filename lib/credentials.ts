@@ -27,12 +27,8 @@ export async function detectStorageMode(): Promise<StorageMode> {
  */
 export async function saveCredentials(
   creds: WooCredentials,
-  mode: StorageMode
+  _mode: StorageMode
 ): Promise<void> {
-  if (mode !== "cookie") {
-    throw new Error("Only cookie storage is supported starting from v2.");
-  }
-  
   const encrypted = encrypt(JSON.stringify(creds));
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, JSON.stringify(encrypted), getCookieOptions());
@@ -43,12 +39,8 @@ export async function saveCredentials(
  * Returns null if no cookie exists. Throws CryptoKeyError on decryption failure.
  */
 export async function loadCredentials(
-  mode: StorageMode
+  _mode: StorageMode
 ): Promise<WooCredentials | null> {
-  if (mode !== "cookie") {
-    throw new Error("Only cookie storage is supported starting from v2.");
-  }
-
   const cookieStore = await cookies();
   const cookie = cookieStore.get(COOKIE_NAME);
   
@@ -70,10 +62,7 @@ export async function loadCredentials(
 /**
  * Clears stored credentials cookie.
  */
-export async function clearCredentials(mode: StorageMode): Promise<void> {
-  if (mode !== "cookie") {
-    throw new Error("Only cookie storage is supported starting from v2.");
-  }
+export async function clearCredentials(_mode: StorageMode): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
 }
@@ -81,7 +70,7 @@ export async function clearCredentials(mode: StorageMode): Promise<void> {
 /**
  * Checks if credentials exist in the cookie.
  */
-export async function hasCredentials(mode?: StorageMode): Promise<boolean> {
+export async function hasCredentials(): Promise<boolean> {
   if (isCredentialsFromEnvironment()) {
     return true;
   }
@@ -93,9 +82,9 @@ export async function hasCredentials(mode?: StorageMode): Promise<boolean> {
  * Gets the store URL from the stored credentials cookie, or null if none exist.
  */
 export async function getStoredStoreUrl(
-  mode?: StorageMode
+  mode: StorageMode = "cookie"
 ): Promise<string | null> {
-  const creds = await loadCredentials("cookie");
+  const creds = await loadCredentials(mode);
   return creds?.storeUrl ?? null;
 }
 

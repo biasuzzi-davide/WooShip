@@ -4,6 +4,21 @@ import { getCredentialsFromEnvironment } from "./credentials";
 
 const DEFAULT_PER_PAGE = 100;
 const TIMEOUT_MS = 30_000; // 30 seconds
+const MAX_AUTO_PAGES = 50;
+const MAX_BACKOFF_MS = 10_000;
+
+interface FetchWithMetaResult<T> {
+  data: T;
+  total?: number;
+  totalPages?: number;
+}
+
+function parsePositiveInt(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
 
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -11,6 +26,14 @@ function chunkArray<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(i, i + size));
   }
   return chunks;
+}
+
+export interface WooOrdersResult {
+  orders: WooOrder[];
+  total: number;
+  pages: number;
+  page: number;
+  perPage: number;
 }
 
 export class WooClient {
@@ -31,37 +54,30 @@ export class WooClient {
     return `Basic ${credentials}`;
   }
 
-  private async fetchWithRetry<T>(
+  private isAbortError(err: unknown): boolean {
+    return err instanceof Error && err.name === "AbortError";
+  }
+
+  private async requestWithRetry(
     path: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+    options: RequestInit = {},
+    attempt = 1
+  ): Promise<Response> {
     const url = `${this.storeUrl}/wp-json/wc/v3${path}`;
     const headers: Record<string, string> = {
       Authorization: this.authHeader,
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(
-          new WooApiError("Request timed out after 30 seconds.", undefined, false)
-        );
-      }, TIMEOUT_MS);
-    });
-
-    const fetchPromise = this._fetchWithRetry<T>(url, headers, options);
-    return Promise.race([fetchPromise, timeoutPromise]);
-  }
-
-  private async _fetchWithRetry<T>(
-    url: string,
-    headers: Record<string, string>,
-    options: RequestInit,
-    attempt = 1
-  ): Promise<T> {
     try {
-      const response = await fetch(url, { ...options, headers });
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
 
       if (response.status === 401) {
         throw new WooApiError("Invalid WooCommerce credentials.", 401, false);
@@ -69,13 +85,14 @@ export class WooClient {
 
       if (response.status === 429) {
         const retryAfter = response.headers.get("Retry-After");
-        const waitMs = retryAfter
-          ? parseInt(retryAfter, 10) * 1000
-          : Math.pow(2, attempt) * 1000; // fallback: 2^attempt ms
+        const retryAfterSeconds = parsePositiveInt(retryAfter) ?? 0;
+        const waitMs = retryAfterSeconds > 0
+          ? Math.min(retryAfterSeconds * 1000, MAX_BACKOFF_MS)
+          : Math.min(Math.pow(2, attempt) * 1000, MAX_BACKOFF_MS);
 
         if (attempt < 3) {
           await this.sleep(waitMs);
-          return this._fetchWithRetry(url, headers, options, attempt + 1);
+          return this.requestWithRetry(path, options, attempt + 1);
         }
         throw new WooApiError(
           "WooCommerce API rate limit exceeded. Please try again later.",
@@ -85,31 +102,67 @@ export class WooClient {
       }
 
       if (!response.ok) {
-        const errorBody = await response.text().catch(() => "Unknown error");
         throw new WooApiError(
-          `WooCommerce API error: ${response.status} ${response.statusText}. ${errorBody}`,
+          `WooCommerce API error: ${response.status} ${response.statusText}.`,
           response.status,
           response.status >= 500
         );
       }
 
-      return response.json() as Promise<T>;
+      return response;
     } catch (err) {
       if (err instanceof WooApiError) throw err;
 
+      if (this.isAbortError(err)) {
+        if (attempt < 3) {
+          const backoffMs = Math.min(Math.pow(2, attempt) * 1000, MAX_BACKOFF_MS);
+          await this.sleep(backoffMs);
+          return this.requestWithRetry(path, options, attempt + 1);
+        }
+        throw new WooApiError(
+          "Request timed out after 30 seconds.",
+          undefined,
+          true
+        );
+      }
+
       // Network errors
       if (attempt < 3) {
-        const backoffMs = Math.pow(2, attempt) * 1000;
+        const backoffMs = Math.min(Math.pow(2, attempt) * 1000, MAX_BACKOFF_MS);
         await this.sleep(backoffMs);
-        return this._fetchWithRetry(url, headers, options, attempt + 1);
+        return this.requestWithRetry(path, options, attempt + 1);
       }
 
       throw new WooApiError(
-        `Network error fetching ${url}: ${(err as Error).message}`,
+        "Network error while contacting WooCommerce API.",
         undefined,
         true
       );
+    } finally {
+      clearTimeout(timeoutId);
     }
+  }
+
+  private async fetchWithRetry<T>(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const response = await this.requestWithRetry(path, options);
+    return response.json() as Promise<T>;
+  }
+
+  private async fetchWithMeta<T>(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<FetchWithMetaResult<T>> {
+    const response = await this.requestWithRetry(path, options);
+    const data = await response.json() as T;
+
+    return {
+      data,
+      total: parsePositiveInt(response.headers.get("X-WP-Total")),
+      totalPages: parsePositiveInt(response.headers.get("X-WP-TotalPages")),
+    };
   }
 
   private sleep(ms: number): Promise<void> {
@@ -126,7 +179,7 @@ export class WooClient {
     before?: string;
     per_page?: number;
     page?: number;
-  }): Promise<WooOrder[]> {
+  }): Promise<WooOrdersResult> {
     const query = new URLSearchParams();
     if (params.status) query.set("status", params.status);
     if (params.after) query.set("after", params.after);
@@ -135,31 +188,79 @@ export class WooClient {
     query.set("per_page", String(perPage));
     if (params.page) query.set("page", String(params.page));
 
-    const orders: WooOrder[] = [];
-
-    // If a specific page is requested, just fetch that page
+    // If a specific page is requested, fetch only that page.
     if (params.page) {
-      const result = await this.fetchWithRetry<WooOrder[]>(
+      const { data, total, totalPages } = await this.fetchWithMeta<WooOrder[]>(
         `/orders?${query.toString()}`
       );
-      return result;
+
+      return {
+        orders: data,
+        total: total ?? data.length,
+        pages: totalPages ?? 1,
+        page: params.page,
+        perPage,
+      };
     }
 
-    // Otherwise, fetch all pages
-    let currentPage = 1;
-    let hasMore = true;
+    query.set("page", "1");
+    const firstPage = await this.fetchWithMeta<WooOrder[]>(
+      `/orders?${query.toString()}`
+    );
 
-    while (hasMore) {
-      query.set("page", String(currentPage));
-      const pageOrders = await this.fetchWithRetry<WooOrder[]>(
-        `/orders?${query.toString()}`
+    const orders: WooOrder[] = [...firstPage.data];
+    let pages = firstPage.totalPages ?? 1;
+
+    if (firstPage.totalPages && firstPage.totalPages > MAX_AUTO_PAGES) {
+      throw new WooApiError(
+        `Too many pages (${firstPage.totalPages}) for a single fetch. Narrow filters or use the page parameter.`,
+        413,
+        false
       );
-      orders.push(...pageOrders);
-      hasMore = pageOrders.length === perPage;
-      currentPage++;
     }
 
-    return orders;
+    if (firstPage.totalPages && firstPage.totalPages > 1) {
+      for (let currentPage = 2; currentPage <= firstPage.totalPages; currentPage++) {
+        query.set("page", String(currentPage));
+        const pageOrders = await this.fetchWithRetry<WooOrder[]>(
+          `/orders?${query.toString()}`
+        );
+        orders.push(...pageOrders);
+      }
+    } else {
+      // Fallback when WooCommerce does not provide total pages headers.
+      let currentPage = 2;
+      let previousCount = firstPage.data.length;
+
+      while (previousCount === perPage && currentPage <= MAX_AUTO_PAGES) {
+        query.set("page", String(currentPage));
+        const pageOrders = await this.fetchWithRetry<WooOrder[]>(
+          `/orders?${query.toString()}`
+        );
+
+        orders.push(...pageOrders);
+        previousCount = pageOrders.length;
+        currentPage++;
+      }
+
+      pages = currentPage - 1;
+
+      if (previousCount === perPage && pages >= MAX_AUTO_PAGES) {
+        throw new WooApiError(
+          `Too many pages (>${MAX_AUTO_PAGES}) for a single fetch. Narrow filters or use the page parameter.`,
+          413,
+          false
+        );
+      }
+    }
+
+    return {
+      orders,
+      total: firstPage.total ?? orders.length,
+      pages,
+      page: 1,
+      perPage,
+    };
   }
 
   /**
@@ -182,10 +283,10 @@ export class WooClient {
       query.set("per_page", String(ids.length));
       query.set("orderby", "include");
 
-      const batch = await this.fetchWithRetry<WooOrder[]>(
+      const pageOrders = await this.fetchWithRetry<WooOrder[]>(
         `/orders?${query.toString()}`
       );
-      fetchedOrders.push(...batch);
+      fetchedOrders.push(...pageOrders);
     }
 
     const byId = new Map<number, WooOrder>();
@@ -224,7 +325,7 @@ export async function createWooClient(): Promise<WooClient> {
     return new WooClient(creds);
   }
 
-  const { getStoredStoreUrl, loadCredentials, detectStorageMode } = await import(
+  const { loadCredentials, detectStorageMode } = await import(
     "./credentials"
   );
 
@@ -234,7 +335,7 @@ export async function createWooClient(): Promise<WooClient> {
   if (!stored) {
     throw new WooApiError(
       "No WooCommerce credentials found. Please configure credentials via UI or environment variables.",
-      undefined,
+      401,
       false
     );
   }

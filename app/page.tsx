@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import { hasCredentials, detectStorageMode } from "@/lib/credentials";
+import { hasCredentials } from "@/lib/credentials";
 
 export default async function Home() {
   try {
-    const mode = await detectStorageMode();
-    const credsExist = await hasCredentials(mode);
+    const credsExist = await hasCredentials();
     if (credsExist) {
       redirect("/orders");
     } else {

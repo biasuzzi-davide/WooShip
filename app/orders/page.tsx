@@ -1,28 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import FilterPanel from "@/components/FilterPanel";
 import CSVOptions from "@/components/CSVOptions";
 import WarningSummary from "@/components/WarningSummary";
 import OrderDetailModal from "@/components/OrderDetailModal";
-import type { WooOrder, CodType } from "@/types";
-
-// Inline warning check (avoiding server-side lib imports in client component)
-function getWarnings(orders: WooOrder[]) {
-  const w: { orderId: number; orderNumber: string; missingFields: string[] }[] = [];
-  for (const o of orders) {
-    const missing: string[] = [];
-    if (!o.shipping.address_1?.trim()) missing.push("to_street");
-    if (!o.shipping.postcode?.trim()) missing.push("to_zip");
-    if (!o.shipping.city?.trim()) missing.push("to_city");
-    if (!o.shipping.country?.trim()) missing.push("to_country");
-    if (!o.shipping.last_name?.trim()) missing.push("to_last_name");
-    if (missing.length > 0) w.push({ orderId: o.id, orderNumber: o.number, missingFields: missing });
-  }
-  return w;
-}
+import { getMissingFieldWarnings } from "@/lib/csv-warnings";
+import type { WooOrder, CodType, WarningSummary as OrderWarningSummary } from "@/types";
 
 const TRUCKPOOLING_DASHBOARD_URL = "https://www.truckpooling.it/it/pro/dashboard?";
 const AUTO_OPEN_DASHBOARD_PREF_KEY = "wooship_auto_open_dashboard_after_export";
@@ -53,7 +39,7 @@ export default function OrdersPage() {
 
   // Warning modal state
   const [showWarningModal, setShowWarningModal] = useState(false);
-  const [warnings, setWarnings] = useState<ReturnType<typeof getWarnings>>([]);
+  const [warnings, setWarnings] = useState<OrderWarningSummary[]>([]);
 
   // Order detail modal state
   const [detailOrder, setDetailOrder] = useState<WooOrder | null>(null);
@@ -61,32 +47,7 @@ export default function OrdersPage() {
   const [showPostExportPrompt, setShowPostExportPrompt] = useState(false);
   const [rememberDashboardPreference, setRememberDashboardPreference] = useState(false);
 
-  // Check credentials on mount
-  useEffect(() => {
-    fetch("/api/credentials")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.hasCredentials) {
-          router.push("/credentials");
-        } else {
-          fetchOrders();
-        }
-      })
-      .catch(() => router.push("/credentials"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
-
-  useEffect(() => {
-    try {
-      setAutoOpenDashboard(
-        window.localStorage.getItem(AUTO_OPEN_DASHBOARD_PREF_KEY) === "true"
-      );
-    } catch {
-      // Ignore localStorage access errors.
-    }
-  }, []);
-
-  async function fetchOrders() {
+  const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -120,7 +81,31 @@ export default function OrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [statusFilter, dateFrom, dateTo]);
+
+  // Check credentials on mount
+  useEffect(() => {
+    fetch("/api/credentials")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.hasCredentials) {
+          router.push("/credentials");
+        } else {
+          fetchOrders();
+        }
+      })
+      .catch(() => router.push("/credentials"));
+  }, [router, fetchOrders]);
+
+  useEffect(() => {
+    try {
+      setAutoOpenDashboard(
+        window.localStorage.getItem(AUTO_OPEN_DASHBOARD_PREF_KEY) === "true"
+      );
+    } catch {
+      // Ignore localStorage access errors.
+    }
+  }, []);
 
   const filteredOrders = useMemo(() => {
     let result = orders;
@@ -237,7 +222,7 @@ export default function OrdersPage() {
 
   async function handleDownload() {
     const selectedOrders = orders.filter((o) => selectedIds.has(o.id));
-    const orderWarnings = getWarnings(selectedOrders);
+    const orderWarnings = getMissingFieldWarnings(selectedOrders);
 
     if (orderWarnings.length > 0 && showWarnings) {
       setWarnings(orderWarnings);
