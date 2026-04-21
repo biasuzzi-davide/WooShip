@@ -99,6 +99,15 @@ function formatPickupDate(pickupDate?: string): string {
   return `${day}/${month}/${year}`;
 }
 
+function firstNonEmptyValue(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (normalized) return normalized;
+  }
+
+  return "";
+}
+
 
 
 /**
@@ -173,7 +182,7 @@ function orderToRows(
       csvValue(shipping.country), // to_country
 
       // 31-40
-  csvValue(shipping.phone ?? billing.phone ?? ""), // to_phone
+        csvValue(firstNonEmptyValue(shipping.phone, billing.phone)), // to_phone
       csvValue(billing.email ?? ""), // to_email
       csvValue(""), // insurance_value
       csvValue(""), // from_cp_code

@@ -254,4 +254,42 @@ describe("generateCSV packaging logic", () => {
     expect(row2[35]).toBe("");
     expect(row2[36]).toBe("");
   });
+
+  it("uses shipping phone for to_phone when available", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      shipping: {
+        ...makeMinimalOrder().shipping,
+        phone: "3339990001",
+      },
+      billing: {
+        ...makeMinimalOrder().billing,
+        phone: "3331112222",
+      },
+    })], {
+      defaultPackageType: "Pacco",
+      codType: "A",
+    });
+
+    const row = csv.split("\n")[1].split(";");
+    expect(row[30]).toBe("3339990001");
+  });
+
+  it("falls back to billing phone for to_phone when shipping phone is empty", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      shipping: {
+        ...makeMinimalOrder().shipping,
+        phone: "   ",
+      },
+      billing: {
+        ...makeMinimalOrder().billing,
+        phone: "3331112222",
+      },
+    })], {
+      defaultPackageType: "Pacco",
+      codType: "A",
+    });
+
+    const row = csv.split("\n")[1].split(";");
+    expect(row[30]).toBe("3331112222");
+  });
 });
