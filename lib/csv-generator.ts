@@ -108,6 +108,19 @@ function firstNonEmptyValue(...values: Array<string | undefined>): string {
   return "";
 }
 
+function resolveDestinationCountry(
+  shipping: WooOrder["shipping"],
+  billing: WooOrder["billing"]
+): string {
+  const shippingCountry = shipping.country?.trim();
+  if (shippingCountry) return shippingCountry;
+
+  const billingCountry = billing.country?.trim();
+  if (billingCountry) return billingCountry;
+
+  return "";
+}
+
 
 
 /**
@@ -126,6 +139,7 @@ function orderToRows(
   const destination = splitStreetAndNumber(shipping.address_1);
   const toFirstName = shipping.first_name || billing.first_name;
   const toLastName = shipping.last_name || billing.last_name;
+  const destinationCountry = resolveDestinationCountry(shipping, billing);
 
   const { packages } = getPackagingForOrder(order);
   const rows: string[][] = [];
@@ -179,7 +193,7 @@ function orderToRows(
       csvValue(shipping.postcode), // to_zip
       csvValue(shipping.city), // to_city
       csvValue(shipping.state), // to_province
-      csvValue(shipping.country), // to_country
+      csvValue(destinationCountry), // to_country
 
       // 31-40
         csvValue(firstNonEmptyValue(shipping.phone, billing.phone)), // to_phone

@@ -255,6 +255,25 @@ describe("generateCSV packaging logic", () => {
     expect(row2[36]).toBe("");
   });
 
+  it("falls back to billing country for to_country when shipping country is empty", () => {
+    const csv = generateCSV([makeMinimalOrder({
+      shipping: {
+        ...makeMinimalOrder().shipping,
+        country: "   ",
+      },
+      billing: {
+        ...makeMinimalOrder().billing,
+        country: "IT",
+      },
+    })], {
+      defaultPackageType: "Pacco",
+      codType: "A",
+    });
+
+    const row = csv.split("\n")[1].split(";");
+    expect(row[29]).toBe("IT");
+  });
+
   it("uses shipping phone for to_phone when available", () => {
     const csv = generateCSV([makeMinimalOrder({
       shipping: {

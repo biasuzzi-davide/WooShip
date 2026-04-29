@@ -9,17 +9,32 @@ const REQUIRED_FIELDS = [
   "to_last_name",
 ] as const;
 
+function resolveDestinationCountry(
+  shipping: WooOrder["shipping"],
+  billing: WooOrder["billing"]
+): string {
+  const shippingCountry = shipping.country?.trim();
+  if (shippingCountry) return shippingCountry;
+
+  const billingCountry = billing.country?.trim();
+  if (billingCountry) return billingCountry;
+
+  return "";
+}
+
 /**
  * Returns all missing required fields for a single order.
  */
 function getMissingFields(order: WooOrder): string[] {
   const missing: string[] = [];
   const shipping = order.shipping;
+  const billing = order.billing;
+  const destinationCountry = resolveDestinationCountry(shipping, billing);
 
   if (!shipping.address_1?.trim()) missing.push("to_street");
   if (!shipping.postcode?.trim()) missing.push("to_zip");
   if (!shipping.city?.trim()) missing.push("to_city");
-  if (!shipping.country?.trim()) missing.push("to_country");
+  if (!destinationCountry) missing.push("to_country");
   if (!shipping.last_name?.trim()) missing.push("to_last_name");
 
   return missing;
